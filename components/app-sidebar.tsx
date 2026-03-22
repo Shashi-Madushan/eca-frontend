@@ -1,4 +1,4 @@
-import { Calendar, Home, Inbox, Search, Settings, Users, UserSquare2 } from "lucide-react"
+import { Calendar, Home, Inbox, Search, Settings, Users, UserSquare2, LogOut, Package } from "lucide-react"
 
 import {
   Sidebar,
@@ -9,6 +9,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarFooter,
 } from "@/components/ui/sidebar"
 import Link from "next/link"
 
@@ -28,20 +29,25 @@ const items = [
     url: "/dashboard/customers",
     icon: UserSquare2,
   },
+  {
+    title: "Product Management",
+    url: "/dashboard/products",
+    icon: Package,
+  },
 ]
 
 export function AppSidebar() {
   return (
-    <Sidebar>
-      <SidebarContent>
+    <Sidebar className="border-r border-slate-200 bg-white">
+      <SidebarContent className="pt-4">
         <SidebarGroup>
-          <SidebarGroupLabel>ECA Application</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-4">ECA Application</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="px-2 space-y-1">
               {items.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton render={<Link href={item.url} />}>
-                    <item.icon />
+                  <SidebarMenuButton render={<Link href={item.url} />} className="transition-all hover:bg-slate-100/80 rounded-lg text-slate-600 hover:text-slate-900 font-medium py-2.5">
+                    <item.icon className="w-5 h-5 opacity-70" />
                     <span>{item.title}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -50,6 +56,24 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
+      <SidebarFooter className="p-4 pb-10 border-t border-slate-100">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton 
+              onClick={() => {
+                // Perform logout, could redirect or call an endpoint
+                console.log("Logout triggered");
+                window.location.href = "/login";
+              }}
+              className="w-full flex items-center gap-3 text-red-600 hover:bg-red-50 hover:text-red-700 transition-all font-medium rounded-lg py-2.5"
+            >
+              <LogOut className="w-5 h-5" />
+              <span>Logout</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   )
 }
