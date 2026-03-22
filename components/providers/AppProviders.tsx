@@ -1,0 +1,16 @@
+"use client";
+
+import { AuthProvider } from "@/context/AuthContext";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/sonner";
+
+export function AppProviders({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthProvider>
+      <TooltipProvider>
+        {children}
+        <Toaster />
+      </TooltipProvider>
+    </AuthProvider>
+  );
+}
