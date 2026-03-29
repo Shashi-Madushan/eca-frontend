@@ -1,22 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ProductDto } from "@/types/models";
+import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
+import { Edit2, ImageOff, PackageSearch, Plus, Search, Trash2 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { toast } from "sonner";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Search, Plus, Edit2, Trash2, PackageSearch, ImageOff } from "lucide-react";
-import { ProductForm } from "../../../components/products/product-form";
+import {
+  DashboardPageHeader,
+  DashboardPageShell,
+  EmptyState,
+  MetricCard,
+  SoftBadge,
+  SurfacePanel,
+  ToolbarRow,
+} from "@/components/dashboard/ui";
+import { ProductForm } from "@/components/products/product-form";
 import { getProxiedImageUrl } from "@/lib/imageProxy";
+import { ProductDto } from "@/types/models";
+import { toast } from "sonner";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<ProductDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
-  
-  // Dialog State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductDto | undefined>(undefined);
 
@@ -64,155 +73,170 @@ export default function ProductsPage() {
     }
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
     }).format(value);
-  };
+
+  const lowStockCount = useMemo(
+    () => products.filter((product) => product.stockQuantity <= 10).length,
+    [products],
+  );
+  const activeCount = useMemo(() => products.filter((product) => product.isActive).length, [products]);
 
   return (
-    <div className="flex-1 space-y-8 p-8 pt-6">
-      {/* Header Section */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900">Products</h2>
-          <p className="text-slate-500 mt-2">Manage your inventory, pricing, and product details.</p>
+    <DashboardPageShell>
+      <DashboardPageHeader
+        eyebrow="Catalog Desk"
+        title="Product management"
+        description="Maintain your catalog, prices, product media, and stock levels inside a more polished retail admin view."
+        actions={
+          <Button
+            onClick={() => handleOpenDialog()}
+            className="h-11 rounded-2xl bg-black px-5 text-white hover:bg-black/90"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add product
+          </Button>
+        }
+      >
+        <div className="grid gap-4 md:grid-cols-3">
+          <MetricCard label="Products" value={products.length} helper="Total catalog size" />
+          <MetricCard label="Active listings" value={activeCount} helper="Visible items ready for sale" />
+          <MetricCard label="Low stock" value={lowStockCount} helper="Products needing attention soon" />
         </div>
-        <Button onClick={() => handleOpenDialog()} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all rounded-lg px-4 h-10">
-          <Plus className="mr-2 h-4 w-4" /> Add Product
-        </Button>
-      </div>
+      </DashboardPageHeader>
 
-      {/* Main Content Area */}
-      <div className="bg-white rounded-2xl shadow-[0px_2px_12px_rgba(0,0,0,0.04)] border border-slate-100/60 overflow-hidden">
-        
-        {/* Toolbar */}
-        <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-white">
-          <form onSubmit={handleSearch} className="relative w-full max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input 
-              type="text" 
-              placeholder="Search products by name..." 
+      <SurfacePanel>
+        <ToolbarRow>
+          <form onSubmit={handleSearch} className="relative w-full max-w-xl">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-black/35" />
+            <Input
+              type="text"
+              placeholder="Search products by name..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 bg-slate-50/50 border-slate-200/60 focus-visible:ring-blue-500 rounded-xl h-10 w-full"
+              className="h-11 rounded-2xl border-black/10 bg-white pl-11 shadow-[0_8px_24px_rgba(15,23,42,0.04)] placeholder:text-black/35"
             />
           </form>
-        </div>
+          <SoftBadge>{products.length} items</SoftBadge>
+        </ToolbarRow>
 
-        {/* Table */}
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-slate-50/50 hover:bg-slate-50/50 border-b-slate-100">
-                <TableHead className="font-semibold text-slate-500 text-xs uppercase tracking-wider h-11 w-16">Image</TableHead>
-                <TableHead className="font-semibold text-slate-500 text-xs uppercase tracking-wider h-11">Product</TableHead>
-                <TableHead className="font-semibold text-slate-500 text-xs uppercase tracking-wider h-11">Category</TableHead>
-                <TableHead className="font-semibold text-slate-500 text-xs uppercase tracking-wider h-11 text-right">Price</TableHead>
-                <TableHead className="font-semibold text-slate-500 text-xs uppercase tracking-wider h-11 text-right">Stock</TableHead>
-                <TableHead className="font-semibold text-slate-500 text-xs uppercase tracking-wider h-11 text-center">Status</TableHead>
-                <TableHead className="text-right font-semibold text-slate-500 text-xs uppercase tracking-wider h-11">Actions</TableHead>
+              <TableRow className="border-black/6 bg-black/[0.02] hover:bg-black/[0.02]">
+                <TableHead className="h-12 w-20 px-6 text-xs font-semibold uppercase tracking-[0.22em] text-black/45">
+                  Media
+                </TableHead>
+                <TableHead className="text-xs font-semibold uppercase tracking-[0.22em] text-black/45">
+                  Product
+                </TableHead>
+                <TableHead className="text-xs font-semibold uppercase tracking-[0.22em] text-black/45">
+                  Category
+                </TableHead>
+                <TableHead className="text-right text-xs font-semibold uppercase tracking-[0.22em] text-black/45">
+                  Price
+                </TableHead>
+                <TableHead className="text-right text-xs font-semibold uppercase tracking-[0.22em] text-black/45">
+                  Stock
+                </TableHead>
+                <TableHead className="text-center text-xs font-semibold uppercase tracking-[0.22em] text-black/45">
+                  Status
+                </TableHead>
+                <TableHead className="px-6 text-right text-xs font-semibold uppercase tracking-[0.22em] text-black/45">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-48 text-center text-slate-500">
-                    <div className="flex flex-col items-center justify-center space-y-3">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                      <p className="text-sm">Loading products...</p>
-                    </div>
+                  <TableCell colSpan={7} className="h-72 text-center text-black/55">
+                    Loading products...
                   </TableCell>
                 </TableRow>
               ) : products.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-48 text-center text-slate-500">
-                    <div className="flex flex-col items-center justify-center">
-                      <PackageSearch className="h-10 w-10 text-slate-300 mb-3" />
-                      <p className="text-sm font-medium text-slate-900">No products found</p>
-                      <p className="text-xs mt-1">Try adjusting your search query or add a new product.</p>
-                    </div>
+                  <TableCell colSpan={7} className="p-0">
+                    <EmptyState
+                      icon={<PackageSearch className="h-6 w-6" />}
+                      title="No products found"
+                      description="Try another search or create a new product in the catalog."
+                    />
                   </TableCell>
                 </TableRow>
               ) : (
                 products.map((product) => (
-                  <TableRow key={product.productId} className="hover:bg-slate-50/80 border-b-slate-50 transition-colors group">
-                    {/* Image Column */}
-                    <TableCell className="py-3">
-                      <div className="h-12 w-12 rounded-lg border border-slate-200 overflow-hidden bg-slate-50 flex items-center justify-center shadow-sm">
+                  <TableRow key={product.productId} className="border-black/6 hover:bg-black/[0.02]">
+                    <TableCell className="px-6 py-4">
+                      <div className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-black/8 bg-black/[0.03]">
                         {product.images && product.images.length > 0 ? (
-                          <img 
-                            src={getProxiedImageUrl(product.images[0])} 
-                            alt={product.name} 
-                            className="h-full w-full object-cover" 
+                          <Image
+                            src={getProxiedImageUrl(product.images[0])}
+                            alt={product.name}
+                            fill
+                            className="object-cover"
                           />
                         ) : (
-                          <ImageOff className="h-5 w-5 text-slate-300" />
+                          <ImageOff className="h-5 w-5 text-black/25" />
                         )}
                       </div>
                     </TableCell>
-
-                    {/* Product Column */}
-                    <TableCell className="py-3">
-                      <div className="flex flex-col">
-                        <span className="font-semibold text-slate-900 text-sm truncate max-w-[200px]" title={product.name}>{product.name}</span>
-                        <span className="text-xs text-slate-500 font-medium">ID: {product.productId}</span>
-                        {product.sku && <span className="text-xs text-slate-400">SKU: {product.sku}</span>}
+                    <TableCell className="py-4">
+                      <div className="space-y-1">
+                        <p className="max-w-[260px] truncate font-semibold text-black" title={product.name}>
+                          {product.name}
+                        </p>
+                        <p className="text-xs text-black/45">{product.productId}</p>
+                        {product.sku ? <p className="text-xs text-black/38">SKU {product.sku}</p> : null}
                       </div>
                     </TableCell>
-
-                    {/* Category Column */}
-                    <TableCell>
-                      <span className="inline-flex items-center px-2 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-medium border border-slate-200/60">
+                    <TableCell className="py-4">
+                      <span className="inline-flex rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/70">
                         {product.category}
                       </span>
                     </TableCell>
-
-                    {/* Price Column */}
-                    <TableCell className="text-right">
-                      <span className="font-semibold text-slate-900">{formatCurrency(product.price)}</span>
+                    <TableCell className="py-4 text-right font-semibold text-black">
+                      {formatCurrency(product.price)}
                     </TableCell>
-
-                    {/* Stock Column */}
-                    <TableCell className="text-right">
-                      <div className="flex flex-col items-end">
-                        <span className={`font-semibold ${
-                          product.stockQuantity <= 10 ? 'text-rose-600' : 'text-slate-900'
-                        }`}>
-                          {product.stockQuantity}
-                        </span>
-                        {product.stockQuantity <= 10 && (
-                          <span className="text-[10px] text-rose-500 font-medium uppercase tracking-wider">Low Stock</span>
-                        )}
-                      </div>
+                    <TableCell className="py-4 text-right">
+                      <p className="font-semibold text-black">{product.stockQuantity}</p>
+                      {product.stockQuantity <= 10 ? (
+                        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-black/45">
+                          Low stock
+                        </p>
+                      ) : null}
                     </TableCell>
-
-                    {/* Status Column */}
-                    <TableCell className="text-center">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border hidden sm:inline-flex ${
-                        product.isActive 
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200/50' 
-                          : 'bg-slate-50 text-slate-500 border-slate-200/50'
-                      }`}>
-                        {product.isActive ? (
-                          <><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span> Active</>
-                        ) : (
-                          <><span className="w-1.5 h-1.5 rounded-full bg-slate-400 mr-1.5"></span> Inactive</>
-                        )}
+                    <TableCell className="py-4 text-center">
+                      <span
+                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${
+                          product.isActive
+                            ? "border-black bg-black text-white"
+                            : "border-black/10 bg-white text-black/55"
+                        }`}
+                      >
+                        {product.isActive ? "Active" : "Inactive"}
                       </span>
                     </TableCell>
-
-                    {/* Actions Column */}
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50" onClick={() => handleOpenDialog(product)}>
+                    <TableCell className="px-6 py-4">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="icon-sm"
+                          className="rounded-xl border-black/10 bg-white hover:bg-black/[0.03]"
+                          onClick={() => handleOpenDialog(product)}
+                        >
                           <Edit2 className="h-4 w-4" />
-                          <span className="sr-only">Edit</span>
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50" onClick={() => deleteProduct(product.productId || "")}>
+                        <Button
+                          variant="outline"
+                          size="icon-sm"
+                          className="rounded-xl border-black/10 bg-white hover:bg-black/[0.03]"
+                          onClick={() => deleteProduct(product.productId || "")}
+                        >
                           <Trash2 className="h-4 w-4" />
-                          <span className="sr-only">Delete</span>
                         </Button>
                       </div>
                     </TableCell>
@@ -222,26 +246,31 @@ export default function ProductsPage() {
             </TableBody>
           </Table>
         </div>
-      </div>
+      </SurfacePanel>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-3xl lg:max-w-4xl bg-white p-0 border-0 shadow-2xl rounded-2xl overflow-hidden">
-          <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50">
-            <DialogTitle className="text-xl font-semibold text-slate-900">
-              {editingProduct ? "Edit Product" : "Add New Product"}
+        <DialogContent className="max-w-4xl rounded-[32px] border border-black/8 bg-white p-0 shadow-[0_28px_100px_rgba(15,23,42,0.12)]">
+          <div className="border-b border-black/6 bg-[linear-gradient(180deg,_#ffffff,_#f4f4f5)] px-6 py-6">
+            <DialogTitle className="text-2xl font-semibold tracking-[-0.04em] text-black">
+              {editingProduct ? "Edit product" : "Add product"}
             </DialogTitle>
-            <p className="text-sm text-slate-500 mt-1">
-              {editingProduct ? "Update the details for this product below." : "Fill in the information below to add a new product to your catalog."}
+            <p className="mt-1 text-sm text-black/55">
+              {editingProduct
+                ? "Update catalog details, inventory values, and media."
+                : "Create a new product card for the POS catalog."}
             </p>
           </div>
-          
-          <ProductForm 
-            initialData={editingProduct} 
-            onSuccess={() => { setIsDialogOpen(false); fetchProducts(search); }} 
-            onCancel={() => setIsDialogOpen(false)} 
+
+          <ProductForm
+            initialData={editingProduct}
+            onSuccess={() => {
+              setIsDialogOpen(false);
+              fetchProducts(search);
+            }}
+            onCancel={() => setIsDialogOpen(false)}
           />
         </DialogContent>
       </Dialog>
-    </div>
+    </DashboardPageShell>
   );
 }

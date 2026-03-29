@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { ProductDto, ProductValidation } from "@/types/models";
+import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
+import { AlertCircle, ImageIcon, UploadCloud, X } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
-import { X, UploadCloud, ImageIcon, AlertCircle } from "lucide-react";
 import { getProxiedImageUrl } from "@/lib/imageProxy";
+import { ProductDto, ProductValidation } from "@/types/models";
+import { toast } from "sonner";
 
 interface ProductFormProps {
   initialData?: ProductDto;
@@ -33,25 +35,19 @@ export function ProductForm({ initialData, onSuccess, onCancel }: ProductFormPro
     costPrice: initialData?.costPrice || 0,
     sku: initialData?.sku || "",
   });
-
   const [errors, setErrors] = useState<FormErrors>({});
-
   const [existingImages, setExistingImages] = useState<string[]>(initialData?.images || []);
   const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
   const [newImages, setNewImages] = useState<File[]>([]);
   const [newImagePreviews, setNewImagePreviews] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const isEditing = !!initialData;
 
-  /**
-   * Validate form data according to API specification
-   */
   const validateFormData = (data: Partial<ProductDto>): FormErrors => {
     const newErrors: FormErrors = {};
 
-    // Validate productId (required, 6-12 alphanumeric)
     if (!isEditing) {
       if (!data.productId?.trim()) {
         newErrors.productId = "Product ID is required";
@@ -60,51 +56,42 @@ export function ProductForm({ initialData, onSuccess, onCancel }: ProductFormPro
       }
     }
 
-    // Validate name (required, max 100)
     if (!data.name?.trim()) {
       newErrors.name = "Product name is required";
     } else if (data.name.length > ProductValidation.name.max) {
       newErrors.name = ProductValidation.name.message;
     }
 
-    // Validate description (optional, max 500)
     if (data.description && data.description.length > ProductValidation.description.max) {
       newErrors.description = ProductValidation.description.message;
     }
 
-    // Validate price (required, > 0)
     if (!data.price || data.price <= 0) {
       newErrors.price = "Price must be greater than 0";
     }
 
-    // Validate category (required, max 50)
     if (!data.category?.trim()) {
       newErrors.category = "Category is required";
     } else if (data.category.length > ProductValidation.category.max) {
       newErrors.category = ProductValidation.category.message;
     }
 
-    // Validate stockQuantity (required, >= 0)
     if (data.stockQuantity === undefined || data.stockQuantity === null || data.stockQuantity < 0) {
       newErrors.stockQuantity = "Stock quantity must be >= 0";
     }
 
-    // Validate barcode (optional, 8-13 digits)
     if (data.barcode && !ProductValidation.barcode.pattern.test(data.barcode)) {
       newErrors.barcode = ProductValidation.barcode.message;
     }
 
-    // Validate supplier (optional, max 100)
     if (data.supplier && data.supplier.length > ProductValidation.supplier.max) {
       newErrors.supplier = ProductValidation.supplier.message;
     }
 
-    // Validate SKU (optional, 8-20 alphanumeric with hyphens)
     if (data.sku && !ProductValidation.sku.pattern.test(data.sku)) {
       newErrors.sku = ProductValidation.sku.message;
     }
 
-    // Validate costPrice (optional, >= 0)
     if (data.costPrice !== undefined && data.costPrice !== null && data.costPrice < 0) {
       newErrors.costPrice = ProductValidation.costPrice.message;
     }
@@ -113,31 +100,28 @@ export function ProductForm({ initialData, onSuccess, onCancel }: ProductFormPro
   };
 
   useEffect(() => {
-    // Generate object URLs for previews
-    const previews = newImages.map(file => URL.createObjectURL(file));
+    const previews = newImages.map((file) => URL.createObjectURL(file));
     setNewImagePreviews(previews);
 
     return () => {
-      // Cleanup object URLs to avoid memory leaks
-      previews.forEach(url => URL.revokeObjectURL(url));
+      previews.forEach((url) => URL.revokeObjectURL(url));
     };
   }, [newImages]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
-    
-    if (type === 'checkbox') {
+
+    if (type === "checkbox") {
       const checked = (e.target as HTMLInputElement).checked;
-      setFormData(prev => ({ ...prev, [name]: checked }));
-    } else if (type === 'number') {
-      setFormData(prev => ({ ...prev, [name]: value === "" ? "" : Number(value) }));
+      setFormData((prev) => ({ ...prev, [name]: checked }));
+    } else if (type === "number") {
+      setFormData((prev) => ({ ...prev, [name]: value === "" ? "" : Number(value) }));
     } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
+      setFormData((prev) => ({ ...prev, [name]: value }));
     }
 
-    // Clear error for this field when user starts editing
     if (errors[name]) {
-      setErrors(prev => {
+      setErrors((prev) => {
         const newErrors = { ...prev };
         delete newErrors[name];
         return newErrors;
@@ -148,27 +132,25 @@ export function ProductForm({ initialData, onSuccess, onCancel }: ProductFormPro
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const filesArray = Array.from(e.target.files);
-      setNewImages(prev => [...prev, ...filesArray]);
-      // Clear input so same file can be selected again if removed
+      setNewImages((prev) => [...prev, ...filesArray]);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
   const removeNewImage = (index: number) => {
-    setNewImages(prev => prev.filter((_, i) => i !== index));
+    setNewImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const removeExistingImage = (url: string) => {
-    setExistingImages(prev => prev.filter(img => img !== url));
-    setImagesToDelete(prev => [...prev, url]);
+    setExistingImages((prev) => prev.filter((img) => img !== url));
+    setImagesToDelete((prev) => [...prev, url]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     try {
-      // Validate form data before submission
       const validationErrors = validateFormData(formData);
       if (Object.keys(validationErrors).length > 0) {
         setErrors(validationErrors);
@@ -177,13 +159,9 @@ export function ProductForm({ initialData, onSuccess, onCancel }: ProductFormPro
         return;
       }
 
-      const url = isEditing 
-        ? `/api/products/${formData.productId}` 
-        : `/api/products`;
+      const url = isEditing ? `/api/products/${formData.productId}` : `/api/products`;
       const method = isEditing ? "PUT" : "POST";
 
-      // Build a clean payload — omit optional fields that are empty/zero
-      // to avoid backend @Pattern validation failures on empty strings
       const cleanPayload: Record<string, unknown> = {
         productId: formData.productId,
         name: formData.name,
@@ -200,28 +178,24 @@ export function ProductForm({ initialData, onSuccess, onCancel }: ProductFormPro
       if (formData.costPrice && formData.costPrice > 0) cleanPayload.costPrice = formData.costPrice;
 
       const data = new FormData();
-      
-      // The API expects 'product' part as JSON string
-      data.append('product', JSON.stringify(cleanPayload));
+      data.append("product", JSON.stringify(cleanPayload));
 
-      // Append new files with correct field names according to API spec
       if (isEditing) {
-        newImages.forEach(image => {
-          data.append('newImages', image);
+        newImages.forEach((image) => {
+          data.append("newImages", image);
         });
-        imagesToDelete.forEach(imgUrl => {
-          data.append('imagesToDelete', imgUrl);
+        imagesToDelete.forEach((imgUrl) => {
+          data.append("imagesToDelete", imgUrl);
         });
       } else {
-        newImages.forEach(image => {
-          data.append('images', image);
+        newImages.forEach((image) => {
+          data.append("images", image);
         });
       }
 
       const response = await fetch(url, {
         method,
         body: data,
-        // Don't set Content-Type header manually - browser will set it with boundary
       });
 
       if (!response.ok) {
@@ -229,271 +203,323 @@ export function ProductForm({ initialData, onSuccess, onCancel }: ProductFormPro
         throw new Error(errorData.detail || `Failed to save product: ${response.statusText}`);
       }
 
-      toast.success(`Product ${isEditing ? 'updated' : 'created'} successfully!`);
+      toast.success(`Product ${isEditing ? "updated" : "created"} successfully!`);
       onSuccess();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      toast.error(error.message || "An error occurred while saving the product.");
+      const message = error instanceof Error ? error.message : "An error occurred while saving the product.";
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const inputClass = (field: string) =>
+    `h-11 rounded-2xl border px-4 ${errors[field] ? "border-red-500 bg-red-50/40" : "border-black/10 bg-black/[0.02]"}`;
 
   return (
-    <form onSubmit={handleSubmit} className="px-6 py-6 space-y-6 max-h-[85vh] overflow-y-auto">
-      <div className="grid grid-cols-2 gap-5">
-        
-        {/* Basic Info */}
-        <div className="col-span-2 sm:col-span-1 space-y-1.5">
-          <Label htmlFor="productId" className="text-sm font-medium text-slate-700">Product ID <span className="text-red-500">*</span></Label>
-          <Input 
-            id="productId" 
-            name="productId" 
-            required 
-            disabled={isEditing}
-            value={formData.productId} 
-            onChange={handleChange} 
-            placeholder="e.g. PROD001"
-            className={`rounded-lg shadow-sm border-slate-200 disabled:bg-slate-50 disabled:text-slate-500 ${errors.productId ? 'border-red-500 ring-1 ring-red-500' : ''}`}
-          />
-          {errors.productId && <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> {errors.productId}</p>}
-        </div>
-        
-        <div className="col-span-2 sm:col-span-1 space-y-1.5">
-          <Label htmlFor="name" className="text-sm font-medium text-slate-700">Name <span className="text-red-500">*</span></Label>
-          <Input 
-            id="name" 
-            name="name" 
-            required 
-            value={formData.name} 
-            onChange={handleChange} 
-            className={`rounded-lg shadow-sm border-slate-200 ${errors.name ? 'border-red-500 ring-1 ring-red-500' : ''}`}
-          />
-          {errors.name && <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> {errors.name}</p>}
-        </div>
+    <form onSubmit={handleSubmit} className="max-h-[85vh] overflow-y-auto px-6 py-6">
+      <div className="grid gap-6 lg:grid-cols-[1.25fr_0.95fr]">
+        <div className="space-y-6">
+          <div className="rounded-[28px] border border-black/8 bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,0.05)] sm:p-6">
+            <div className="mb-5">
+              <h3 className="text-lg font-semibold tracking-[-0.03em] text-black">Product details</h3>
+              <p className="mt-1 text-sm text-black/55">Core product information used in the POS catalog.</p>
+            </div>
 
-        <div className="col-span-2 space-y-1.5">
-          <Label htmlFor="description" className="text-sm font-medium text-slate-700">Description</Label>
-          <textarea 
-            id="description" 
-            name="description" 
-            value={formData.description} 
-            onChange={handleChange} 
-            className={`flex min-h-[80px] w-full rounded-lg border bg-white px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${errors.description ? 'border-red-500 ring-red-500' : 'border-slate-200'}`}
-          />
-          {errors.description && <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> {errors.description}</p>}
-        </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="productId">Product ID</Label>
+                <Input
+                  id="productId"
+                  name="productId"
+                  required
+                  disabled={isEditing}
+                  value={formData.productId}
+                  onChange={handleChange}
+                  placeholder="PROD001"
+                  className={inputClass("productId")}
+                />
+                {errors.productId ? (
+                  <p className="flex items-center gap-1 text-xs text-red-600">
+                    <AlertCircle className="h-3 w-3" /> {errors.productId}
+                  </p>
+                ) : null}
+              </div>
 
-        {/* Pricing & Stock */}
-        <div className="col-span-2 sm:col-span-1 space-y-1.5">
-          <Label htmlFor="price" className="text-sm font-medium text-slate-700">Price ($) <span className="text-red-500">*</span></Label>
-          <Input 
-            id="price" 
-            name="price" 
-            type="number" 
-            required 
-            min="0"
-            step="0.01"
-            value={formData.price} 
-            onChange={handleChange} 
-            className={`rounded-lg shadow-sm ${errors.price ? 'border-red-500 ring-1 ring-red-500' : 'border-slate-200'}`}
-          />
-          {errors.price && <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> {errors.price}</p>}
-        </div>
+              <div className="space-y-2">
+                <Label htmlFor="name">Name</Label>
+                <Input id="name" name="name" required value={formData.name} onChange={handleChange} className={inputClass("name")} />
+                {errors.name ? (
+                  <p className="flex items-center gap-1 text-xs text-red-600">
+                    <AlertCircle className="h-3 w-3" /> {errors.name}
+                  </p>
+                ) : null}
+              </div>
 
-        <div className="col-span-2 sm:col-span-1 space-y-1.5">
-          <Label htmlFor="costPrice" className="text-sm font-medium text-slate-700">Cost Price ($)</Label>
-          <Input 
-            id="costPrice" 
-            name="costPrice" 
-            type="number" 
-            min="0"
-            step="0.01"
-            value={formData.costPrice} 
-            onChange={handleChange} 
-            className={`rounded-lg shadow-sm ${errors.costPrice ? 'border-red-500 ring-1 ring-red-500' : 'border-slate-200'}`}
-          />
-          {errors.costPrice && <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> {errors.costPrice}</p>}
-        </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="description">Description</Label>
+                <textarea
+                  id="description"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  className={`min-h-[120px] w-full rounded-[24px] border px-4 py-3 text-sm outline-none transition focus:border-black/25 focus:ring-4 focus:ring-black/5 ${
+                    errors.description ? "border-red-500 bg-red-50/40" : "border-black/10 bg-black/[0.02]"
+                  }`}
+                />
+                {errors.description ? (
+                  <p className="flex items-center gap-1 text-xs text-red-600">
+                    <AlertCircle className="h-3 w-3" /> {errors.description}
+                  </p>
+                ) : null}
+              </div>
 
-        <div className="col-span-2 sm:col-span-1 space-y-1.5">
-          <Label htmlFor="stockQuantity" className="text-sm font-medium text-slate-700">Stock Quantity <span className="text-red-500">*</span></Label>
-          <Input 
-            id="stockQuantity" 
-            name="stockQuantity" 
-            type="number" 
-            required 
-            min="0"
-            value={formData.stockQuantity} 
-            onChange={handleChange} 
-            className={`rounded-lg shadow-sm ${errors.stockQuantity ? 'border-red-500 ring-1 ring-red-500' : 'border-slate-200'}`}
-          />
-          {errors.stockQuantity && <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> {errors.stockQuantity}</p>}
-        </div>
+              <div className="space-y-2">
+                <Label htmlFor="price">Price ($)</Label>
+                <Input
+                  id="price"
+                  name="price"
+                  type="number"
+                  required
+                  min="0"
+                  step="0.01"
+                  value={formData.price}
+                  onChange={handleChange}
+                  className={inputClass("price")}
+                />
+                {errors.price ? (
+                  <p className="flex items-center gap-1 text-xs text-red-600">
+                    <AlertCircle className="h-3 w-3" /> {errors.price}
+                  </p>
+                ) : null}
+              </div>
 
-        <div className="col-span-2 sm:col-span-1 space-y-1.5">
-          <Label htmlFor="category" className="text-sm font-medium text-slate-700">Category <span className="text-red-500">*</span></Label>
-          <Input 
-            id="category" 
-            name="category" 
-            required 
-            value={formData.category} 
-            onChange={handleChange} 
-            className={`rounded-lg shadow-sm ${errors.category ? 'border-red-500 ring-1 ring-red-500' : 'border-slate-200'}`}
-          />
-          {errors.category && <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> {errors.category}</p>}
-        </div>
-        
-        <div className="col-span-2 sm:col-span-1 space-y-1.5">
-          <Label htmlFor="supplier" className="text-sm font-medium text-slate-700">Supplier</Label>
-          <Input 
-            id="supplier" 
-            name="supplier" 
-            value={formData.supplier} 
-            onChange={handleChange} 
-            className={`rounded-lg shadow-sm ${errors.supplier ? 'border-red-500 ring-1 ring-red-500' : 'border-slate-200'}`}
-          />
-          {errors.supplier && <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> {errors.supplier}</p>}
-        </div>
+              <div className="space-y-2">
+                <Label htmlFor="costPrice">Cost Price ($)</Label>
+                <Input
+                  id="costPrice"
+                  name="costPrice"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.costPrice}
+                  onChange={handleChange}
+                  className={inputClass("costPrice")}
+                />
+                {errors.costPrice ? (
+                  <p className="flex items-center gap-1 text-xs text-red-600">
+                    <AlertCircle className="h-3 w-3" /> {errors.costPrice}
+                  </p>
+                ) : null}
+              </div>
 
-        <div className="col-span-2 sm:col-span-1 space-y-1.5">
-          <Label htmlFor="sku" className="text-sm font-medium text-slate-700">SKU</Label>
-          <Input 
-            id="sku" 
-            name="sku" 
-            value={formData.sku} 
-            onChange={handleChange} 
-            className={`rounded-lg shadow-sm ${errors.sku ? 'border-red-500 ring-1 ring-red-500' : 'border-slate-200'}`}
-          />
-          {errors.sku && <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> {errors.sku}</p>}
-        </div>
+              <div className="space-y-2">
+                <Label htmlFor="stockQuantity">Stock Quantity</Label>
+                <Input
+                  id="stockQuantity"
+                  name="stockQuantity"
+                  type="number"
+                  required
+                  min="0"
+                  value={formData.stockQuantity}
+                  onChange={handleChange}
+                  className={inputClass("stockQuantity")}
+                />
+                {errors.stockQuantity ? (
+                  <p className="flex items-center gap-1 text-xs text-red-600">
+                    <AlertCircle className="h-3 w-3" /> {errors.stockQuantity}
+                  </p>
+                ) : null}
+              </div>
 
-        <div className="col-span-2 sm:col-span-1 space-y-1.5">
-          <Label htmlFor="barcode" className="text-sm font-medium text-slate-700">Barcode</Label>
-          <Input 
-            id="barcode" 
-            name="barcode" 
-            value={formData.barcode} 
-            onChange={handleChange} 
-            className={`rounded-lg shadow-sm ${errors.barcode ? 'border-red-500 ring-1 ring-red-500' : 'border-slate-200'}`}
-          />
-          {errors.barcode && <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> {errors.barcode}</p>}
-        </div>
-
-        {/* Status */}
-        <div className="col-span-2 flex items-center gap-2 mt-2">
-          <input 
-            type="checkbox" 
-            id="isActive" 
-            name="isActive" 
-            checked={formData.isActive}
-            onChange={handleChange}
-            className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-          />
-          <Label htmlFor="isActive" className="text-sm font-medium text-slate-700">Active (Visible to customers)</Label>
-        </div>
-
-        {/* Image Upload Area */}
-        <div className="col-span-2 border-t border-slate-100 pt-5 mt-2">
-          <div className="mb-3 flex justify-between items-center">
-            <Label className="text-base font-semibold text-slate-900">Product Images</Label>
-            <Button 
-              type="button" 
-              variant="outline" 
-              size="sm"
-              onClick={() => fileInputRef.current?.click()}
-              className="rounded-lg shadow-sm"
-            >
-              <UploadCloud className="h-4 w-4 mr-2" />
-              Upload Photos
-            </Button>
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleFileChange} 
-              multiple 
-              accept="image/*" 
-              className="hidden" 
-            />
+              <div className="space-y-2">
+                <Label htmlFor="category">Category</Label>
+                <Input
+                  id="category"
+                  name="category"
+                  required
+                  value={formData.category}
+                  onChange={handleChange}
+                  className={inputClass("category")}
+                />
+                {errors.category ? (
+                  <p className="flex items-center gap-1 text-xs text-red-600">
+                    <AlertCircle className="h-3 w-3" /> {errors.category}
+                  </p>
+                ) : null}
+              </div>
+            </div>
           </div>
 
-          {/* Image Previews */}
-          {(existingImages.length > 0 || newImagePreviews.length > 0) ? (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
-              {/* Existing Images */}
-              {existingImages.map((url, i) => (
-                <div key={`existing-${i}`} className="relative group border rounded-lg overflow-hidden border-slate-200 bg-slate-50 aspect-square">
-                  <img src={getProxiedImageUrl(url)} alt={`Existing product ${i}`} className="object-cover w-full h-full" />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Button 
-                      type="button" 
-                      variant="destructive" 
-                      size="icon" 
-                      onClick={() => removeExistingImage(url)}
-                      className="h-8 w-8 rounded-full"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-              
-              {/* New Selected Images */}
-              {newImagePreviews.map((preview, i) => (
-                <div key={`new-${i}`} className="relative group border border-blue-200 shadow-sm rounded-lg overflow-hidden bg-blue-50/30 aspect-square">
-                  <div className="absolute top-1 left-1 bg-blue-500 text-white text-[10px] uppercase font-bold px-1.5 py-0.5 rounded z-10">New</div>
-                  <img src={preview} alt={`New upload ${i}`} className="object-cover w-full h-full" />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20">
-                    <Button 
-                      type="button" 
-                      variant="destructive" 
-                      size="icon" 
-                      onClick={() => removeNewImage(i)}
-                      className="h-8 w-8 rounded-full"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+          <div className="rounded-[28px] border border-black/8 bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,0.05)] sm:p-6">
+            <div className="mb-5">
+              <h3 className="text-lg font-semibold tracking-[-0.03em] text-black">Store metadata</h3>
+              <p className="mt-1 text-sm text-black/55">Extra supplier and identification details.</p>
             </div>
-          ) : (
-            <div 
-              className="border-2 border-dashed border-slate-200 rounded-xl p-8 flex flex-col items-center justify-center text-slate-500 bg-slate-50/50 hover:bg-slate-50 transition-colors cursor-pointer"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <ImageIcon className="h-8 w-8 mb-3 text-slate-400" />
-              <p className="text-sm font-medium text-slate-700">Click to upload images</p>
-              <p className="text-xs mt-1 text-slate-400">JPG, PNG, GIF up to 5MB</p>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="supplier">Supplier</Label>
+                <Input id="supplier" name="supplier" value={formData.supplier} onChange={handleChange} className={inputClass("supplier")} />
+                {errors.supplier ? (
+                  <p className="flex items-center gap-1 text-xs text-red-600">
+                    <AlertCircle className="h-3 w-3" /> {errors.supplier}
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="sku">SKU</Label>
+                <Input id="sku" name="sku" value={formData.sku} onChange={handleChange} className={inputClass("sku")} />
+                {errors.sku ? (
+                  <p className="flex items-center gap-1 text-xs text-red-600">
+                    <AlertCircle className="h-3 w-3" /> {errors.sku}
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="barcode">Barcode</Label>
+                <Input id="barcode" name="barcode" value={formData.barcode} onChange={handleChange} className={inputClass("barcode")} />
+                {errors.barcode ? (
+                  <p className="flex items-center gap-1 text-xs text-red-600">
+                    <AlertCircle className="h-3 w-3" /> {errors.barcode}
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="flex items-center rounded-[24px] border border-black/8 bg-black/[0.02] px-4 py-4">
+                <input
+                  type="checkbox"
+                  id="isActive"
+                  name="isActive"
+                  checked={formData.isActive}
+                  onChange={handleChange}
+                  className="h-4 w-4 rounded border-black/20 text-black focus:ring-black/20"
+                />
+                <Label htmlFor="isActive" className="ml-3 text-sm font-medium text-black/75">
+                  Active and visible in the POS catalog
+                </Label>
+              </div>
             </div>
-          )}
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div className="rounded-[28px] border border-black/8 bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,0.05)] sm:p-6">
+            <div className="mb-5 flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-semibold tracking-[-0.03em] text-black">Product images</h3>
+                <p className="mt-1 text-sm text-black/55">Upload photos used in the catalog and POS grid.</p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                className="rounded-2xl border-black/10 bg-white px-4 text-black hover:bg-black/[0.03]"
+              >
+                <UploadCloud className="mr-2 h-4 w-4" />
+                Upload
+              </Button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                multiple
+                accept="image/*"
+                className="hidden"
+              />
+            </div>
+
+            {existingImages.length > 0 || newImagePreviews.length > 0 ? (
+              <div className="grid grid-cols-2 gap-4">
+                {existingImages.map((url, index) => (
+                  <div
+                    key={`existing-${index}`}
+                    className="group relative aspect-square overflow-hidden rounded-[24px] border border-black/8 bg-black/[0.03]"
+                  >
+                    <Image
+                      src={getProxiedImageUrl(url)}
+                      alt={`Existing product ${index}`}
+                      fill
+                      className="object-cover"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/45 opacity-0 transition group-hover:opacity-100">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon-sm"
+                        onClick={() => removeExistingImage(url)}
+                        className="rounded-full border-white/20 bg-white/10 text-white hover:bg-white/20"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+
+                {newImagePreviews.map((preview, index) => (
+                  <div
+                    key={`new-${index}`}
+                    className="group relative aspect-square overflow-hidden rounded-[24px] border border-black/8 bg-black/[0.03]"
+                  >
+                    <div className="absolute left-3 top-3 z-10 rounded-full bg-black px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white">
+                      New
+                    </div>
+                    <Image src={preview} alt={`New upload ${index}`} fill className="object-cover" />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/45 opacity-0 transition group-hover:opacity-100">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon-sm"
+                        onClick={() => removeNewImage(index)}
+                        className="rounded-full border-white/20 bg-white/10 text-white hover:bg-white/20"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="flex w-full flex-col items-center justify-center rounded-[28px] border border-dashed border-black/14 bg-black/[0.02] px-6 py-12 text-center transition hover:bg-black/[0.03]"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <ImageIcon className="h-8 w-8 text-black/35" />
+                <p className="mt-4 text-sm font-medium text-black">Click to upload images</p>
+                <p className="mt-1 text-xs text-black/45">JPG, PNG, or GIF files up to 5MB</p>
+              </button>
+            )}
+          </div>
+
+          <div className="rounded-[28px] border border-black/8 bg-[linear-gradient(180deg,_#111111,_#262626)] p-5 text-white shadow-[0_18px_50px_rgba(15,23,42,0.08)] sm:p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/55">Product status</p>
+            <h3 className="mt-3 text-2xl font-semibold tracking-[-0.04em]">
+              {formData.isActive ? "Ready for sale" : "Hidden from checkout"}
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-white/72">
+              Keep products active when they should appear in the POS product grid and customer-facing workflows.
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="sticky bottom-0 -mx-6 -mb-6 px-6 py-4 bg-slate-50/80 backdrop-blur-md border-t border-slate-100 flex justify-end gap-3 rounded-b-2xl">
-        <Button 
-          type="button" 
-          variant="outline" 
-          onClick={onCancel} 
+      <div className="sticky bottom-0 mt-6 flex justify-end gap-3 border-t border-black/6 bg-white/95 px-1 pt-5 backdrop-blur">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
           disabled={isSubmitting}
-          className="rounded-lg shadow-sm border-slate-200 bg-white"
+          className="h-11 rounded-2xl border-black/10 bg-white px-5 text-black hover:bg-black/[0.03]"
         >
           Cancel
         </Button>
-        <Button 
-          type="submit" 
-          disabled={isSubmitting}
-          className="rounded-lg shadow-sm bg-blue-600 hover:bg-blue-700 text-white"
-        >
-          {isSubmitting ? (
-            <span className="flex items-center">
-              <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
-              Saving...
-            </span>
-          ) : (
-            isEditing ? "Save Changes" : "Create Product"
-          )}
+        <Button type="submit" disabled={isSubmitting} className="h-11 rounded-2xl bg-black px-5 text-white hover:bg-black/90">
+          {isSubmitting ? "Saving..." : isEditing ? "Save changes" : "Create product"}
         </Button>
       </div>
     </form>

@@ -1,13 +1,24 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CreateOrderPayload, OrderDto, OrderItemDto, OrderStatus, PaymentMethod } from "@/types/models";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { toast } from "sonner";
 import { Eye, Plus, Search, ShoppingBag, Trash2, X } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  DashboardPageHeader,
+  DashboardPageShell,
+  EmptyState,
+  MetricCard,
+  SoftBadge,
+  SurfacePanel,
+  ToolbarRow,
+  formatEnumLabel,
+} from "@/components/dashboard/ui";
+import { CreateOrderPayload, OrderDto, OrderItemDto, OrderStatus, PaymentMethod } from "@/types/models";
+import { toast } from "sonner";
 
 const PAYMENT_METHODS: PaymentMethod[] = [
   "CASH",
@@ -49,13 +60,11 @@ export default function OrdersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | OrderStatus>("ALL");
-
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<OrderDto | null>(null);
   const [editingStatus, setEditingStatus] = useState<OrderStatus | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
-
   const [customerId, setCustomerId] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
   const [orderStatus, setOrderStatus] = useState<OrderStatus>("PENDING");
@@ -84,44 +93,50 @@ export default function OrdersPage() {
     fetchOrders();
   }, []);
 
-  const formattedOrderItems = useMemo<OrderItemDto[]>(() => {
-    return orderItems
-      .filter((item) => item.productId.trim() && item.productName.trim() && item.quantity > 0)
-      .map((item) => {
-        const unitPrice = Number(item.unitPrice) || 0;
-        const quantity = Number(item.quantity) || 0;
-        const discount = Number(item.discountAmount) || 0;
-        const totalPrice = Math.max(unitPrice * quantity - discount, 0);
+  const formattedOrderItems = useMemo<OrderItemDto[]>(
+    () =>
+      orderItems
+        .filter((item) => item.productId.trim() && item.productName.trim() && item.quantity > 0)
+        .map((item) => {
+          const unitPrice = Number(item.unitPrice) || 0;
+          const quantity = Number(item.quantity) || 0;
+          const discount = Number(item.discountAmount) || 0;
+          const totalPrice = Math.max(unitPrice * quantity - discount, 0);
 
-        return {
-          productId: item.productId.trim(),
-          productName: item.productName.trim(),
-          quantity,
-          unitPrice,
-          totalPrice,
-          discountAmount: discount,
-        };
-      });
-  }, [orderItems]);
+          return {
+            productId: item.productId.trim(),
+            productName: item.productName.trim(),
+            quantity,
+            unitPrice,
+            totalPrice,
+            discountAmount: discount,
+          };
+        }),
+    [orderItems],
+  );
 
-  const subtotal = useMemo(() => {
-    return formattedOrderItems.reduce((sum, item) => sum + item.totalPrice, 0);
-  }, [formattedOrderItems]);
+  const subtotal = useMemo(
+    () => formattedOrderItems.reduce((sum, item) => sum + item.totalPrice, 0),
+    [formattedOrderItems],
+  );
 
-  const total = useMemo(() => {
-    return Math.max(subtotal + (Number(taxAmount) || 0) - (Number(discountAmount) || 0), 0);
-  }, [discountAmount, subtotal, taxAmount]);
+  const total = useMemo(
+    () => Math.max(subtotal + (Number(taxAmount) || 0) - (Number(discountAmount) || 0), 0),
+    [discountAmount, subtotal, taxAmount],
+  );
 
-  const filteredOrders = useMemo(() => {
-    return orders.filter((order) => {
-      const matchesSearch =
-        order.customerId.toLowerCase().includes(search.toLowerCase()) ||
-        String(order.orderId || "").includes(search.toLowerCase()) ||
-        order.paymentMethod.toLowerCase().includes(search.toLowerCase());
-      const matchesStatus = statusFilter === "ALL" || order.orderStatus === statusFilter;
-      return matchesSearch && matchesStatus;
-    });
-  }, [orders, search, statusFilter]);
+  const filteredOrders = useMemo(
+    () =>
+      orders.filter((order) => {
+        const matchesSearch =
+          order.customerId.toLowerCase().includes(search.toLowerCase()) ||
+          String(order.orderId || "").includes(search.toLowerCase()) ||
+          order.paymentMethod.toLowerCase().includes(search.toLowerCase());
+        const matchesStatus = statusFilter === "ALL" || order.orderStatus === statusFilter;
+        return matchesSearch && matchesStatus;
+      }),
+    [orders, search, statusFilter],
+  );
 
   const resetForm = () => {
     setCustomerId("");
@@ -132,17 +147,11 @@ export default function OrdersPage() {
     setOrderItems([{ ...emptyItem }]);
   };
 
-  const addItemRow = () => {
-    setOrderItems((prev) => [...prev, { ...emptyItem }]);
-  };
-
-  const removeItemRow = (index: number) => {
+  const addItemRow = () => setOrderItems((prev) => [...prev, { ...emptyItem }]);
+  const removeItemRow = (index: number) =>
     setOrderItems((prev) => (prev.length === 1 ? prev : prev.filter((_, i) => i !== index)));
-  };
-
-  const updateItem = (index: number, patch: Partial<DraftOrderItem>) => {
+  const updateItem = (index: number, patch: Partial<DraftOrderItem>) =>
     setOrderItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
-  };
 
   const createOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -173,9 +182,7 @@ export default function OrdersPage() {
     try {
       const res = await fetch("/api/orders", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
@@ -218,9 +225,7 @@ export default function OrdersPage() {
     try {
       const res = await fetch(`/api/orders/${orderId}/status?newStatus=${newStatus}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
       });
 
       if (!res.ok) {
@@ -239,12 +244,11 @@ export default function OrdersPage() {
     }
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("en-US", {
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "USD",
     }).format(value || 0);
-  };
 
   const openDetails = (order: OrderDto) => {
     setSelectedOrder(order);
@@ -252,115 +256,145 @@ export default function OrdersPage() {
     setIsDetailsOpen(true);
   };
 
+  const deliveredOrders = useMemo(
+    () => orders.filter((order) => order.orderStatus === "DELIVERED").length,
+    [orders],
+  );
+  const pendingOrders = useMemo(
+    () => orders.filter((order) => order.orderStatus === "PENDING").length,
+    [orders],
+  );
+
   return (
-    <div className="flex-1 space-y-8 p-8 pt-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900">Order Management</h2>
-          <p className="text-slate-500 mt-2">Review, create, and manage customer orders.</p>
-        </div>
-        <Button
-          onClick={() => setIsCreateOpen(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all rounded-lg px-4 h-10"
-        >
-          <Plus className="mr-2 h-4 w-4" /> Create Order
-        </Button>
-      </div>
-
-      <div className="bg-white rounded-2xl shadow-[0px_2px_12px_rgba(0,0,0,0.04)] border border-slate-100/60 overflow-hidden">
-        <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-white">
-          <div className="relative w-full max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input
-              type="text"
-              placeholder="Search by order id, customer, payment..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 bg-slate-50/50 border-slate-200/60 focus-visible:ring-blue-500 rounded-xl h-10 w-full"
-            />
-          </div>
-
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as "ALL" | OrderStatus)}
-            className="h-10 rounded-xl border border-slate-200 bg-slate-50/50 px-3 text-sm"
+    <DashboardPageShell>
+      <DashboardPageHeader
+        eyebrow="Orders Desk"
+        title="Order management"
+        description="Review customer orders, update statuses, and create manual orders from a cleaner operations screen."
+        actions={
+          <Button
+            onClick={() => setIsCreateOpen(true)}
+            className="h-11 rounded-2xl bg-black px-5 text-white hover:bg-black/90"
           >
-            <option value="ALL">All Statuses</option>
-            {ORDER_STATUSES.map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
-          </select>
+            <Plus className="mr-2 h-4 w-4" />
+            Create order
+          </Button>
+        }
+      >
+        <div className="grid gap-4 md:grid-cols-3">
+          <MetricCard label="Orders" value={orders.length} helper="All fetched orders" />
+          <MetricCard label="Pending" value={pendingOrders} helper="Orders still waiting to move" />
+          <MetricCard label="Delivered" value={deliveredOrders} helper="Completed fulfillment count" />
         </div>
+      </DashboardPageHeader>
+
+      <SurfacePanel>
+        <ToolbarRow className="items-stretch sm:items-center">
+          <div className="flex w-full flex-col gap-3 lg:flex-row lg:items-center">
+            <div className="relative w-full max-w-xl">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-black/35" />
+              <Input
+                type="text"
+                placeholder="Search by order id, customer, payment..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-11 rounded-2xl border-black/10 bg-white pl-11 shadow-[0_8px_24px_rgba(15,23,42,0.04)] placeholder:text-black/35"
+              />
+            </div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as "ALL" | OrderStatus)}
+              className="pos-select max-w-xs"
+            >
+              <option value="ALL">All statuses</option>
+              {ORDER_STATUSES.map((status) => (
+                <option key={status} value={status}>
+                  {formatEnumLabel(status)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <SoftBadge>{filteredOrders.length} visible</SoftBadge>
+        </ToolbarRow>
 
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-slate-50/50 hover:bg-slate-50/50 border-b-slate-100">
-                <TableHead className="font-semibold text-slate-500 text-xs uppercase tracking-wider h-11">Order ID</TableHead>
-                <TableHead className="font-semibold text-slate-500 text-xs uppercase tracking-wider h-11">Customer</TableHead>
-                <TableHead className="font-semibold text-slate-500 text-xs uppercase tracking-wider h-11">Status</TableHead>
-                <TableHead className="font-semibold text-slate-500 text-xs uppercase tracking-wider h-11">Payment</TableHead>
-                <TableHead className="font-semibold text-slate-500 text-xs uppercase tracking-wider h-11 text-right">Total</TableHead>
-                <TableHead className="font-semibold text-slate-500 text-xs uppercase tracking-wider h-11">Date</TableHead>
-                <TableHead className="text-right font-semibold text-slate-500 text-xs uppercase tracking-wider h-11">Actions</TableHead>
+              <TableRow className="border-black/6 bg-black/[0.02] hover:bg-black/[0.02]">
+                <TableHead className="h-12 px-6 text-xs font-semibold uppercase tracking-[0.22em] text-black/45">
+                  Order
+                </TableHead>
+                <TableHead className="text-xs font-semibold uppercase tracking-[0.22em] text-black/45">
+                  Customer
+                </TableHead>
+                <TableHead className="text-xs font-semibold uppercase tracking-[0.22em] text-black/45">
+                  Status
+                </TableHead>
+                <TableHead className="text-xs font-semibold uppercase tracking-[0.22em] text-black/45">
+                  Payment
+                </TableHead>
+                <TableHead className="text-right text-xs font-semibold uppercase tracking-[0.22em] text-black/45">
+                  Total
+                </TableHead>
+                <TableHead className="text-xs font-semibold uppercase tracking-[0.22em] text-black/45">
+                  Date
+                </TableHead>
+                <TableHead className="px-6 text-right text-xs font-semibold uppercase tracking-[0.22em] text-black/45">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-48 text-center text-slate-500">
-                    <div className="flex flex-col items-center justify-center space-y-3">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                      <p className="text-sm">Loading orders...</p>
-                    </div>
+                  <TableCell colSpan={7} className="h-72 text-center text-black/55">
+                    Loading orders...
                   </TableCell>
                 </TableRow>
               ) : filteredOrders.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-48 text-center text-slate-500">
-                    <div className="flex flex-col items-center justify-center">
-                      <ShoppingBag className="h-10 w-10 text-slate-300 mb-3" />
-                      <p className="text-sm font-medium text-slate-900">No orders found</p>
-                      <p className="text-xs mt-1">Try another search or create a new order.</p>
-                    </div>
+                  <TableCell colSpan={7} className="p-0">
+                    <EmptyState
+                      icon={<ShoppingBag className="h-6 w-6" />}
+                      title="No orders found"
+                      description="Try another search or create a new manual order."
+                    />
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredOrders.map((order) => (
-                  <TableRow key={order.orderId} className="hover:bg-slate-50/80 border-b-slate-50 transition-colors group">
-                    <TableCell className="font-semibold text-slate-800">#{order.orderId}</TableCell>
-                    <TableCell className="font-medium text-slate-700">{order.customerId}</TableCell>
-                    <TableCell>
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border bg-slate-50 text-slate-700 border-slate-200">
-                        {order.orderStatus}
+                  <TableRow key={order.orderId} className="border-black/6 hover:bg-black/[0.02]">
+                    <TableCell className="px-6 py-4 font-semibold text-black">#{order.orderId}</TableCell>
+                    <TableCell className="py-4 text-black/78">{order.customerId}</TableCell>
+                    <TableCell className="py-4">
+                      <span className="inline-flex rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/70">
+                        {formatEnumLabel(order.orderStatus)}
                       </span>
                     </TableCell>
-                    <TableCell className="text-slate-700">{order.paymentMethod}</TableCell>
-                    <TableCell className="text-right font-semibold">{formatCurrency(order.totalAmount)}</TableCell>
-                    <TableCell className="text-slate-500 text-sm">
+                    <TableCell className="py-4 text-black/68">{formatEnumLabel(order.paymentMethod)}</TableCell>
+                    <TableCell className="py-4 text-right font-semibold text-black">
+                      {formatCurrency(order.totalAmount)}
+                    </TableCell>
+                    <TableCell className="py-4 text-sm text-black/48">
                       {order.orderDate ? new Date(order.orderDate).toLocaleString() : "-"}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                    <TableCell className="px-6 py-4">
+                      <div className="flex items-center justify-end gap-2">
                         <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50"
+                          variant="outline"
+                          size="icon-sm"
+                          className="rounded-xl border-black/10 bg-white hover:bg-black/[0.03]"
                           onClick={() => openDetails(order)}
                         >
                           <Eye className="h-4 w-4" />
-                          <span className="sr-only">View</span>
                         </Button>
                         <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50"
+                          variant="outline"
+                          size="icon-sm"
+                          className="rounded-xl border-black/10 bg-white hover:bg-black/[0.03]"
                           onClick={() => deleteOrder(order.orderId)}
                         >
                           <Trash2 className="h-4 w-4" />
-                          <span className="sr-only">Delete</span>
                         </Button>
                       </div>
                     </TableCell>
@@ -370,57 +404,62 @@ export default function OrdersPage() {
             </TableBody>
           </Table>
         </div>
-      </div>
+      </SurfacePanel>
 
-      <Dialog open={isDetailsOpen} onOpenChange={(open) => {
-        setIsDetailsOpen(open);
-        if (!open) {
-          setEditingStatus(null);
-        }
-      }}>
-        <DialogContent className="max-w-3xl bg-white p-0 border-0 shadow-2xl rounded-2xl overflow-hidden">
-          <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50">
-            <DialogTitle className="text-xl font-semibold text-slate-900">Order Details</DialogTitle>
-            <p className="text-sm text-slate-500 mt-1">Order #{selectedOrder?.orderId}</p>
+      <Dialog
+        open={isDetailsOpen}
+        onOpenChange={(open) => {
+          setIsDetailsOpen(open);
+          if (!open) setEditingStatus(null);
+        }}
+      >
+        <DialogContent className="max-w-4xl rounded-[32px] border border-black/8 bg-white p-0 shadow-[0_28px_100px_rgba(15,23,42,0.12)]">
+          <div className="border-b border-black/6 bg-[linear-gradient(180deg,_#ffffff,_#f4f4f5)] px-6 py-6">
+            <DialogTitle className="text-2xl font-semibold tracking-[-0.04em] text-black">
+              Order details
+            </DialogTitle>
+            <p className="mt-1 text-sm text-black/55">Order #{selectedOrder?.orderId}</p>
           </div>
 
-          <div className="p-6 space-y-4">
-            <div className="grid sm:grid-cols-2 gap-4 text-sm">
-              <div className="rounded-xl border border-slate-100 p-3 bg-slate-50/40">
-                <p className="text-xs uppercase tracking-wider text-slate-500">Customer ID</p>
-                <p className="font-semibold text-slate-900 mt-1">{selectedOrder?.customerId || "-"}</p>
+          <div className="space-y-5 p-6">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-[24px] border border-black/8 bg-black/[0.02] p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-black/40">Customer ID</p>
+                <p className="mt-2 text-lg font-semibold text-black">{selectedOrder?.customerId || "-"}</p>
               </div>
-              <div className="rounded-xl border border-slate-100 p-3 bg-slate-50/40">
-                <p className="text-xs uppercase tracking-wider text-slate-500">Payment Method</p>
-                <p className="font-semibold text-slate-900 mt-1">{selectedOrder?.paymentMethod || "-"}</p>
+              <div className="rounded-[24px] border border-black/8 bg-black/[0.02] p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-black/40">Payment method</p>
+                <p className="mt-2 text-lg font-semibold text-black">
+                  {selectedOrder?.paymentMethod ? formatEnumLabel(selectedOrder.paymentMethod) : "-"}
+                </p>
               </div>
-              <div className="rounded-xl border border-slate-100 p-3 bg-slate-50/40">
-                <p className="text-xs uppercase tracking-wider text-slate-500">Status</p>
+              <div className="rounded-[24px] border border-black/8 bg-black/[0.02] p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-black/40">Status</p>
                 {editingStatus !== null ? (
-                  <div className="flex gap-2 mt-1">
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                     <select
                       value={editingStatus}
                       onChange={(e) => setEditingStatus(e.target.value as OrderStatus)}
-                      className="flex-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-sm font-semibold"
+                      className="pos-select"
                     >
                       {ORDER_STATUSES.map((status) => (
                         <option key={status} value={status}>
-                          {status}
+                          {formatEnumLabel(status)}
                         </option>
                       ))}
                     </select>
                     <Button
                       size="sm"
-                      className="bg-green-600 hover:bg-green-700 text-white h-8"
+                      className="h-10 rounded-2xl bg-black px-4 text-white hover:bg-black/90"
                       onClick={() => updateOrderStatus(selectedOrder?.orderId, editingStatus)}
                       disabled={isUpdatingStatus}
                     >
-                      {isUpdatingStatus ? "..." : "Save"}
+                      {isUpdatingStatus ? "Saving..." : "Save"}
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-8"
+                      className="h-10 rounded-2xl border-black/10 bg-white px-4 text-black hover:bg-black/[0.03]"
                       onClick={() => setEditingStatus(null)}
                       disabled={isUpdatingStatus}
                     >
@@ -428,14 +467,14 @@ export default function OrdersPage() {
                     </Button>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border bg-slate-50 text-slate-700 border-slate-200">
-                      {selectedOrder?.orderStatus || "-"}
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <span className="inline-flex rounded-full border border-black bg-black px-3 py-1 text-xs font-medium text-white">
+                      {selectedOrder?.orderStatus ? formatEnumLabel(selectedOrder.orderStatus) : "-"}
                     </span>
                     <Button
                       size="sm"
-                      variant="ghost"
-                      className="h-7 px-2 text-xs text-blue-600 hover:bg-blue-50"
+                      variant="outline"
+                      className="h-9 rounded-2xl border-black/10 bg-white px-4 text-black hover:bg-black/[0.03]"
                       onClick={() => setEditingStatus(selectedOrder?.orderStatus || "PENDING")}
                     >
                       Edit
@@ -443,26 +482,31 @@ export default function OrdersPage() {
                   </div>
                 )}
               </div>
-              <div className="rounded-xl border border-slate-100 p-3 bg-slate-50/40">
-                <p className="text-xs uppercase tracking-wider text-slate-500">Total</p>
-                <p className="font-semibold text-slate-900 mt-1">{formatCurrency(selectedOrder?.totalAmount || 0)}</p>
+              <div className="rounded-[24px] border border-black/8 bg-black/[0.02] p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-black/40">Total</p>
+                <p className="mt-2 text-lg font-semibold text-black">
+                  {formatCurrency(selectedOrder?.totalAmount || 0)}
+                </p>
               </div>
             </div>
 
-            <div className="rounded-xl border border-slate-100 overflow-hidden">
-              <div className="px-4 py-3 border-b bg-slate-50/50 text-sm font-semibold text-slate-800">Order Items</div>
-              <div className="p-4 space-y-2">
+            <div className="rounded-[28px] border border-black/8 bg-white">
+              <div className="border-b border-black/6 px-5 py-4 text-sm font-semibold text-black">Order items</div>
+              <div className="space-y-3 p-5">
                 {(selectedOrder?.orderItems || []).length === 0 ? (
-                  <p className="text-sm text-slate-500">No order items available.</p>
+                  <p className="text-sm text-black/55">No order items available.</p>
                 ) : (
                   (selectedOrder?.orderItems || []).map((item, index) => (
-                    <div key={`${item.orderItemId || index}-${item.productId}`} className="grid grid-cols-[1fr_auto_auto] gap-3 rounded-lg border border-slate-100 p-3 text-sm">
+                    <div
+                      key={`${item.orderItemId || index}-${item.productId}`}
+                      className="grid gap-3 rounded-[22px] border border-black/8 bg-black/[0.02] p-4 sm:grid-cols-[1fr_auto_auto]"
+                    >
                       <div>
-                        <p className="font-medium text-slate-900">{item.productName}</p>
-                        <p className="text-xs text-slate-500">{item.productId}</p>
+                        <p className="font-semibold text-black">{item.productName}</p>
+                        <p className="text-xs text-black/45">{item.productId}</p>
                       </div>
-                      <div className="text-slate-700">x{item.quantity}</div>
-                      <div className="font-semibold text-slate-900">{formatCurrency(item.totalPrice)}</div>
+                      <div className="text-sm font-medium text-black/65">x{item.quantity}</div>
+                      <div className="font-semibold text-black">{formatCurrency(item.totalPrice)}</div>
                     </div>
                   ))
                 )}
@@ -472,60 +516,76 @@ export default function OrdersPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-w-4xl bg-white p-0 border-0 shadow-2xl rounded-2xl overflow-hidden">
-          <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50">
-            <DialogTitle className="text-xl font-semibold text-slate-900">Create Manual Order</DialogTitle>
-            <p className="text-sm text-slate-500 mt-1">Fill order fields and add line items before saving.</p>
+      <Dialog
+        open={isCreateOpen}
+        onOpenChange={(open) => {
+          setIsCreateOpen(open);
+          if (!open) resetForm();
+        }}
+      >
+        <DialogContent className="max-w-5xl rounded-[32px] border border-black/8 bg-white p-0 shadow-[0_28px_100px_rgba(15,23,42,0.12)]">
+          <div className="border-b border-black/6 bg-[linear-gradient(180deg,_#ffffff,_#f4f4f5)] px-6 py-6">
+            <DialogTitle className="text-2xl font-semibold tracking-[-0.04em] text-black">
+              Create manual order
+            </DialogTitle>
+            <p className="mt-1 text-sm text-black/55">
+              Fill order details and line items before saving the order.
+            </p>
           </div>
 
-          <form onSubmit={createOrder} className="p-6 space-y-5">
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className="space-y-1.5">
-                <label htmlFor="customerId" className="text-sm font-medium text-slate-700">Customer ID</label>
+          <form onSubmit={createOrder} className="space-y-6 p-6">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <div className="space-y-2">
+                <label htmlFor="customerId" className="text-sm font-medium text-black/75">
+                  Customer ID
+                </label>
                 <Input
                   id="customerId"
                   required
                   value={customerId}
                   onChange={(e) => setCustomerId(e.target.value)}
                   placeholder="CUST001"
+                  className="h-11 rounded-2xl border-black/10 bg-black/[0.02] px-4"
                 />
               </div>
-
-              <div className="space-y-1.5">
-                <label htmlFor="paymentMethod" className="text-sm font-medium text-slate-700">Payment Method</label>
+              <div className="space-y-2">
+                <label htmlFor="paymentMethod" className="text-sm font-medium text-black/75">
+                  Payment Method
+                </label>
                 <select
                   id="paymentMethod"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="pos-select"
                   value={paymentMethod}
                   onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
                 >
                   {PAYMENT_METHODS.map((method) => (
                     <option key={method} value={method}>
-                      {method}
+                      {formatEnumLabel(method)}
                     </option>
                   ))}
                 </select>
               </div>
-
-              <div className="space-y-1.5">
-                <label htmlFor="orderStatus" className="text-sm font-medium text-slate-700">Order Status</label>
+              <div className="space-y-2">
+                <label htmlFor="orderStatus" className="text-sm font-medium text-black/75">
+                  Order Status
+                </label>
                 <select
                   id="orderStatus"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="pos-select"
                   value={orderStatus}
                   onChange={(e) => setOrderStatus(e.target.value as OrderStatus)}
                 >
                   {ORDER_STATUSES.map((status) => (
                     <option key={status} value={status}>
-                      {status}
+                      {formatEnumLabel(status)}
                     </option>
                   ))}
                 </select>
               </div>
-
-              <div className="space-y-1.5">
-                <label htmlFor="taxAmount" className="text-sm font-medium text-slate-700">Tax Amount</label>
+              <div className="space-y-2">
+                <label htmlFor="taxAmount" className="text-sm font-medium text-black/75">
+                  Tax Amount
+                </label>
                 <Input
                   id="taxAmount"
                   type="number"
@@ -533,11 +593,13 @@ export default function OrdersPage() {
                   min="0"
                   value={taxAmount}
                   onChange={(e) => setTaxAmount(Number(e.target.value) || 0)}
+                  className="h-11 rounded-2xl border-black/10 bg-black/[0.02] px-4"
                 />
               </div>
-
-              <div className="space-y-1.5">
-                <label htmlFor="discountAmount" className="text-sm font-medium text-slate-700">Discount Amount</label>
+              <div className="space-y-2">
+                <label htmlFor="discountAmount" className="text-sm font-medium text-black/75">
+                  Discount Amount
+                </label>
                 <Input
                   id="discountAmount"
                   type="number"
@@ -545,30 +607,45 @@ export default function OrdersPage() {
                   min="0"
                   value={discountAmount}
                   onChange={(e) => setDiscountAmount(Number(e.target.value) || 0)}
+                  className="h-11 rounded-2xl border-black/10 bg-black/[0.02] px-4"
                 />
               </div>
             </div>
 
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-slate-900">Order Items</h3>
-                <Button type="button" variant="outline" onClick={addItemRow} className="rounded-lg">
-                  <Plus className="h-4 w-4 mr-2" /> Add Item
+            <div className="space-y-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold tracking-[-0.03em] text-black">Order items</h3>
+                  <p className="text-sm text-black/55">Add products manually to this order.</p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addItemRow}
+                  className="h-11 rounded-2xl border-black/10 bg-white px-5 text-black hover:bg-black/[0.03]"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add item
                 </Button>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {orderItems.map((item, index) => (
-                  <div key={index} className="grid grid-cols-1 sm:grid-cols-[1fr_1.5fr_100px_120px_120px_auto] gap-2 items-center rounded-lg border border-slate-100 p-3">
+                  <div
+                    key={index}
+                    className="grid gap-3 rounded-[24px] border border-black/8 bg-black/[0.02] p-4 lg:grid-cols-[1fr_1.2fr_110px_140px_140px_auto]"
+                  >
                     <Input
                       placeholder="Product ID"
                       value={item.productId}
                       onChange={(e) => updateItem(index, { productId: e.target.value })}
+                      className="h-11 rounded-2xl border-black/10 bg-white px-4"
                     />
                     <Input
                       placeholder="Product Name"
                       value={item.productName}
                       onChange={(e) => updateItem(index, { productName: e.target.value })}
+                      className="h-11 rounded-2xl border-black/10 bg-white px-4"
                     />
                     <Input
                       type="number"
@@ -576,6 +653,7 @@ export default function OrdersPage() {
                       placeholder="Qty"
                       value={item.quantity}
                       onChange={(e) => updateItem(index, { quantity: Number(e.target.value) || 1 })}
+                      className="h-11 rounded-2xl border-black/10 bg-white px-4"
                     />
                     <Input
                       type="number"
@@ -584,6 +662,7 @@ export default function OrdersPage() {
                       placeholder="Unit Price"
                       value={item.unitPrice}
                       onChange={(e) => updateItem(index, { unitPrice: Number(e.target.value) || 0 })}
+                      className="h-11 rounded-2xl border-black/10 bg-white px-4"
                     />
                     <Input
                       type="number"
@@ -592,8 +671,15 @@ export default function OrdersPage() {
                       placeholder="Item Discount"
                       value={item.discountAmount}
                       onChange={(e) => updateItem(index, { discountAmount: Number(e.target.value) || 0 })}
+                      className="h-11 rounded-2xl border-black/10 bg-white px-4"
                     />
-                    <Button type="button" variant="ghost" size="icon" onClick={() => removeItemRow(index)}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon-sm"
+                      onClick={() => removeItemRow(index)}
+                      className="mt-1 rounded-xl border-black/10 bg-white hover:bg-black/[0.03] lg:mt-0"
+                    >
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
@@ -601,39 +687,43 @@ export default function OrdersPage() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 grid sm:grid-cols-3 gap-2 text-sm">
+            <div className="grid gap-4 rounded-[28px] border border-black/8 bg-black/[0.02] p-5 sm:grid-cols-3">
               <div>
-                <p className="text-slate-500">Subtotal</p>
-                <p className="font-semibold text-slate-900">{formatCurrency(subtotal)}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-black/40">Subtotal</p>
+                <p className="mt-2 text-lg font-semibold text-black">{formatCurrency(subtotal)}</p>
               </div>
               <div>
-                <p className="text-slate-500">Tax - Discount</p>
-                <p className="font-semibold text-slate-900">{formatCurrency((Number(taxAmount) || 0) - (Number(discountAmount) || 0))}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-black/40">Tax - Discount</p>
+                <p className="mt-2 text-lg font-semibold text-black">
+                  {formatCurrency((Number(taxAmount) || 0) - (Number(discountAmount) || 0))}
+                </p>
               </div>
               <div>
-                <p className="text-slate-500">Total</p>
-                <p className="font-semibold text-slate-900">{formatCurrency(total)}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-black/40">Total</p>
+                <p className="mt-2 text-lg font-semibold text-black">{formatCurrency(total)}</p>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-5">
+            <div className="flex items-center justify-end gap-3 border-t border-black/6 pt-5">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => {
-                  setIsCreateOpen(false);
-                  resetForm();
-                }}
+                onClick={() => setIsCreateOpen(false)}
+                className="h-11 rounded-2xl border-black/10 bg-white px-5 text-black hover:bg-black/[0.03]"
               >
                 Cancel
               </Button>
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white" disabled={isSubmitting}>
-                {isSubmitting ? "Creating..." : "Create Order"}
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="h-11 rounded-2xl bg-black px-5 text-white hover:bg-black/90"
+              >
+                {isSubmitting ? "Saving..." : "Create order"}
               </Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </DashboardPageShell>
   );
 }

@@ -1,25 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { User, UserType, UserStatus } from "@/types/models";
+import { useEffect, useMemo, useState } from "react";
+import { Edit2, Plus, Search, ShieldCheck, Trash2, Users2 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { toast } from "sonner";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Search, Plus, Edit2, Trash2 } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  DashboardPageHeader,
+  DashboardPageShell,
+  EmptyState,
+  MetricCard,
+  SoftBadge,
+  SurfacePanel,
+  ToolbarRow,
+  formatEnumLabel,
+} from "@/components/dashboard/ui";
+import { User, UserStatus, UserType } from "@/types/models";
+import { toast } from "sonner";
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
-  
-  // Dialog State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  
-  // Form State
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -29,7 +36,7 @@ export default function UsersPage() {
     status: "ACTIVE" as UserStatus,
     phone: "",
     address: "",
-    password: "", // Only used for creating
+    password: "",
   });
 
   const fetchUsers = async (query = "") => {
@@ -98,11 +105,10 @@ export default function UsersPage() {
     try {
       const url = editingUser ? `/api/iam/users/${editingUser.id}` : `/api/iam/users`;
       const method = editingUser ? "PUT" : "POST";
-      
+
       const payload = { ...formData };
       if (editingUser) {
-        // Don't send password if editing (or handle it properly via API req)
-        delete (payload as any).password;
+        delete (payload as { password?: string }).password;
       }
 
       const res = await fetch(url, {
@@ -112,7 +118,7 @@ export default function UsersPage() {
       });
 
       if (!res.ok) throw new Error(editingUser ? "Failed to update user" : "Failed to create user");
-      
+
       toast.success(editingUser ? "User updated successfully!" : "User created successfully!");
       setIsDialogOpen(false);
       resetForm();
@@ -136,132 +142,146 @@ export default function UsersPage() {
     }
   };
 
-  return (
-    <div className="flex-1 space-y-8 p-8 pt-6">
-      {/* Header Section */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900">Users</h2>
-          <p className="text-slate-500 mt-2">Manage your team members and their account permissions here.</p>
-        </div>
-        <Button onClick={() => handleOpenDialog()} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all rounded-lg px-4 h-10">
-          <Plus className="mr-2 h-4 w-4" /> Add User
-        </Button>
-      </div>
+  const activeUsers = useMemo(() => users.filter((user) => user.status === "ACTIVE").length, [users]);
+  const managers = useMemo(() => users.filter((user) => user.userType !== "EMPLOYEE").length, [users]);
 
-      {/* Main Content Area */}
-      <div className="bg-white rounded-2xl shadow-[0px_2px_12px_rgba(0,0,0,0.04)] border border-slate-100/60 overflow-hidden">
-        
-        {/* Toolbar */}
-        <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-white">
-          <form onSubmit={handleSearch} className="relative w-full max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input 
-              type="text" 
-              placeholder="Search users by name or email..." 
+  const roleClass = (role: UserType) =>
+    role === "ADMIN"
+      ? "bg-black text-white border-black"
+      : role === "MANAGER"
+        ? "bg-black/[0.08] text-black border-black/10"
+        : "bg-white text-black/70 border-black/10";
+
+  const statusClass = (status: UserStatus) =>
+    status === "ACTIVE"
+      ? "bg-black text-white border-black"
+      : status === "SUSPENDED"
+        ? "bg-black/[0.08] text-black border-black/10"
+        : "bg-white text-black/55 border-black/10";
+
+  return (
+    <DashboardPageShell>
+      <DashboardPageHeader
+        eyebrow="Staff Desk"
+        title="User management"
+        description="Manage staff accounts, roles, and status from a cleaner retail operations view."
+        actions={
+          <Button
+            onClick={() => handleOpenDialog()}
+            className="h-11 rounded-2xl bg-black px-5 text-white hover:bg-black/90"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add user
+          </Button>
+        }
+      >
+        <div className="grid gap-4 md:grid-cols-3">
+          <MetricCard label="Total users" value={users.length} helper="All staff profiles" />
+          <MetricCard label="Active staff" value={activeUsers} helper="Currently available to operate" />
+          <MetricCard label="Managers & admins" value={managers} helper="Elevated access accounts" />
+        </div>
+      </DashboardPageHeader>
+
+      <SurfacePanel>
+        <ToolbarRow>
+          <form onSubmit={handleSearch} className="relative w-full max-w-xl">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-black/35" />
+            <Input
+              type="text"
+              placeholder="Search users by name or email..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 bg-slate-50/50 border-slate-200/60 focus-visible:ring-blue-500 rounded-xl h-10 w-full"
+              className="h-11 rounded-2xl border-black/10 bg-white pl-11 shadow-[0_8px_24px_rgba(15,23,42,0.04)] placeholder:text-black/35"
             />
           </form>
-        </div>
+          <SoftBadge>{users.length} records</SoftBadge>
+        </ToolbarRow>
 
-        {/* Table */}
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-slate-50/50 hover:bg-slate-50/50 border-b-slate-100">
-                <TableHead className="font-semibold text-slate-500 text-xs uppercase tracking-wider h-11">User</TableHead>
-                <TableHead className="font-semibold text-slate-500 text-xs uppercase tracking-wider h-11">Contact</TableHead>
-                <TableHead className="font-semibold text-slate-500 text-xs uppercase tracking-wider h-11">Role</TableHead>
-                <TableHead className="font-semibold text-slate-500 text-xs uppercase tracking-wider h-11">Status</TableHead>
-                <TableHead className="text-right font-semibold text-slate-500 text-xs uppercase tracking-wider h-11">Actions</TableHead>
+              <TableRow className="border-black/6 bg-black/[0.02] hover:bg-black/[0.02]">
+                <TableHead className="h-12 px-6 text-xs font-semibold uppercase tracking-[0.22em] text-black/45">
+                  Team member
+                </TableHead>
+                <TableHead className="text-xs font-semibold uppercase tracking-[0.22em] text-black/45">
+                  Contact
+                </TableHead>
+                <TableHead className="text-xs font-semibold uppercase tracking-[0.22em] text-black/45">
+                  Role
+                </TableHead>
+                <TableHead className="text-xs font-semibold uppercase tracking-[0.22em] text-black/45">
+                  Status
+                </TableHead>
+                <TableHead className="px-6 text-right text-xs font-semibold uppercase tracking-[0.22em] text-black/45">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-48 text-center text-slate-500">
-                    <div className="flex flex-col items-center justify-center space-y-3">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                      <p className="text-sm">Loading users...</p>
-                    </div>
+                  <TableCell colSpan={5} className="h-72 text-center text-black/55">
+                    Loading users...
                   </TableCell>
                 </TableRow>
               ) : users.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-48 text-center text-slate-500">
-                    <div className="flex flex-col items-center justify-center">
-                      <p className="text-sm font-medium text-slate-900">No users found</p>
-                      <p className="text-xs mt-1">Try adjusting your search query or add a new user.</p>
-                    </div>
+                  <TableCell colSpan={5} className="p-0">
+                    <EmptyState
+                      icon={<Users2 className="h-6 w-6" />}
+                      title="No users found"
+                      description="Try a different search or create a new staff profile."
+                    />
                   </TableCell>
                 </TableRow>
               ) : (
                 users.map((user) => (
-                  <TableRow key={user.id} className="hover:bg-slate-50/80 border-b-slate-50 transition-colors group">
-                    {/* User Info Column */}
-                    <TableCell className="py-4">
+                  <TableRow key={user.id} className="border-black/6 hover:bg-black/[0.02]">
+                    <TableCell className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-semibold text-sm">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-black/8 bg-black text-sm font-semibold text-white">
                           {user.firstName?.charAt(0) || user.username?.charAt(0) || "U"}
                         </div>
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-slate-900 text-sm">{user.firstName} {user.lastName}</span>
-                          <span className="text-xs text-slate-500">@{user.username}</span>
+                        <div className="space-y-1">
+                          <p className="font-semibold text-black">
+                            {user.firstName} {user.lastName}
+                          </p>
+                          <p className="text-xs text-black/55">@{user.username}</p>
                         </div>
                       </div>
                     </TableCell>
-
-                    {/* Contact Column */}
-                    <TableCell>
-                      <span className="text-sm text-slate-600 block">{user.email}</span>
-                      {user.phone && <span className="text-xs text-slate-400 block">{user.phone}</span>}
+                    <TableCell className="py-4">
+                      <p className="text-sm font-medium text-black/78">{user.email}</p>
+                      {user.phone ? <p className="text-xs text-black/45">{user.phone}</p> : null}
                     </TableCell>
-
-                    {/* Role Column */}
-                    <TableCell>
-                      <div className="flex items-center">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
-                          user.userType === 'ADMIN' 
-                            ? 'bg-purple-100 text-purple-700' 
-                            : user.userType === 'MANAGER'
-                            ? 'bg-amber-100 text-amber-700'
-                            : 'bg-blue-100 text-blue-700'
-                        }`}>
-                          {user.userType}
-                        </span>
-                      </div>
+                    <TableCell className="py-4">
+                      <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${roleClass(user.userType)}`}>
+                        {formatEnumLabel(user.userType)}
+                      </span>
                     </TableCell>
-
-                    {/* Status Column */}
-                    <TableCell>
-                      <div className="flex items-center">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${
-                          user.status === 'ACTIVE' 
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200/50' 
-                            : user.status === 'SUSPENDED'
-                            ? 'bg-red-50 text-red-700 border-red-200/50'
-                            : 'bg-slate-100 text-slate-700 border-slate-200/50'
-                        }`}>
-                          {user.status === 'ACTIVE' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>}
-                          {user.status === 'SUSPENDED' && <span className="w-1.5 h-1.5 rounded-full bg-red-500 mr-1.5"></span>}
-                          {user.status === 'INACTIVE' && <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mr-1.5"></span>}
-                          {user.status.charAt(0) + user.status.slice(1).toLowerCase()}
-                        </span>
-                      </div>
+                    <TableCell className="py-4">
+                      <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${statusClass(user.status)}`}>
+                        {formatEnumLabel(user.status)}
+                      </span>
                     </TableCell>
-
-                    {/* Actions Column */}
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50" onClick={() => handleOpenDialog(user)}>
+                    <TableCell className="px-6 py-4">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="icon-sm"
+                          className="rounded-xl border-black/10 bg-white hover:bg-black/[0.03]"
+                          onClick={() => handleOpenDialog(user)}
+                        >
                           <Edit2 className="h-4 w-4" />
-                          <span className="sr-only">Edit</span>
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50" onClick={() => deleteUser(user.id)}>
+                        <Button
+                          variant="outline"
+                          size="icon-sm"
+                          className="rounded-xl border-black/10 bg-white hover:bg-black/[0.03]"
+                          onClick={() => deleteUser(user.id)}
+                        >
                           <Trash2 className="h-4 w-4" />
-                          <span className="sr-only">Delete</span>
                         </Button>
                       </div>
                     </TableCell>
@@ -271,91 +291,152 @@ export default function UsersPage() {
             </TableBody>
           </Table>
         </div>
-      </div>
+      </SurfacePanel>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-xl bg-white p-0 border-0 shadow-2xl rounded-2xl overflow-hidden">
-          <div className="px-6 py-6 border-b border-slate-100 bg-slate-50/50">
-            <DialogTitle className="text-xl font-semibold text-slate-900">
-              {editingUser ? "Edit Team Member" : "Add New Team Member"}
-            </DialogTitle>
-            <p className="text-sm text-slate-500 mt-1">
-              {editingUser ? "Update the details for this user below." : "Fill in the information below to add a new user to the system."}
-            </p>
+      <Dialog
+        open={isDialogOpen}
+        onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) resetForm();
+        }}
+      >
+        <DialogContent className="max-w-3xl rounded-[32px] border border-black/8 bg-white p-0 shadow-[0_28px_100px_rgba(15,23,42,0.12)]">
+          <div className="border-b border-black/6 bg-[linear-gradient(180deg,_#ffffff,_#f4f4f5)] px-6 py-6">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-black/8 bg-black text-white">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-2xl font-semibold tracking-[-0.04em] text-black">
+                  {editingUser ? "Edit user" : "Create user"}
+                </DialogTitle>
+                <p className="mt-1 text-sm text-black/55">
+                  {editingUser
+                    ? "Update the employee profile and permissions below."
+                    : "Add a new team member to the system without changing any backend behavior."}
+                </p>
+              </div>
+            </div>
           </div>
-          
-          <form onSubmit={handleSubmit} className="px-6 py-6 space-y-6">
-            <div className="grid grid-cols-2 gap-5">
-              <div className="space-y-1.5">
-                <Label htmlFor="firstName" className="text-sm font-medium text-slate-700">First Name</Label>
-                <Input id="firstName" required value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} className="rounded-lg shadow-sm border-slate-200" />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="lastName" className="text-sm font-medium text-slate-700">Last Name</Label>
-                <Input id="lastName" required value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} className="rounded-lg shadow-sm border-slate-200" />
-              </div>
-              
-              <div className="space-y-1.5">
-                <Label htmlFor="username" className="text-sm font-medium text-slate-700">Username</Label>
-                <Input id="username" required value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} className="rounded-lg shadow-sm border-slate-200" />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-sm font-medium text-slate-700">Email Address</Label>
-                <Input id="email" type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="rounded-lg shadow-sm border-slate-200" />
-              </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="userType" className="text-sm font-medium text-slate-700">Role</Label>
-                <select 
-                  id="userType" 
-                  className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                  value={formData.userType} 
-                  onChange={e => setFormData({...formData, userType: e.target.value as UserType})}
+          <form onSubmit={handleSubmit} className="space-y-6 px-6 py-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First Name</Label>
+                <Input
+                  id="firstName"
+                  required
+                  value={formData.firstName}
+                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                  className="h-11 rounded-2xl border-black/10 bg-black/[0.02] px-4"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input
+                  id="lastName"
+                  required
+                  value={formData.lastName}
+                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                  className="h-11 rounded-2xl border-black/10 bg-black/[0.02] px-4"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <Input
+                  id="username"
+                  required
+                  value={formData.username}
+                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                  className="h-11 rounded-2xl border-black/10 bg-black/[0.02] px-4"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="h-11 rounded-2xl border-black/10 bg-black/[0.02] px-4"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="userType">Role</Label>
+                <select
+                  id="userType"
+                  className="pos-select"
+                  value={formData.userType}
+                  onChange={(e) => setFormData({ ...formData, userType: e.target.value as UserType })}
                 >
                   <option value="EMPLOYEE">Employee</option>
                   <option value="MANAGER">Manager</option>
                   <option value="ADMIN">Admin</option>
                 </select>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="status" className="text-sm font-medium text-slate-700">Status</Label>
-                <select 
-                  id="status" 
-                  className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                  value={formData.status} 
-                  onChange={e => setFormData({...formData, status: e.target.value as UserStatus})}
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <select
+                  id="status"
+                  className="pos-select"
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value as UserStatus })}
                 >
                   <option value="ACTIVE">Active</option>
                   <option value="INACTIVE">Inactive</option>
                   <option value="SUSPENDED">Suspended</option>
                 </select>
               </div>
-
-              <div className="col-span-2 sm:col-span-1 space-y-1.5">
-                <Label htmlFor="phone" className="text-sm font-medium text-slate-700">Phone</Label>
-                <Input id="phone" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="rounded-lg shadow-sm border-slate-200" />
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone</Label>
+                <Input
+                  id="phone"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  className="h-11 rounded-2xl border-black/10 bg-black/[0.02] px-4"
+                />
               </div>
-              
-              {!editingUser && (
-                <div className="col-span-2 sm:col-span-1 space-y-1.5">
-                  <Label htmlFor="password" className="text-sm font-medium text-slate-700">Password</Label>
-                  <Input id="password" type="password" required={!editingUser} value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="rounded-lg shadow-sm border-slate-200" />
+              {!editingUser ? (
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    required
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="h-11 rounded-2xl border-black/10 bg-black/[0.02] px-4"
+                  />
                 </div>
-              )}
-
-              <div className="col-span-2 space-y-1.5">
-                <Label htmlFor="address" className="text-sm font-medium text-slate-700">Address</Label>
-                <Input id="address" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} className="rounded-lg shadow-sm border-slate-200" />
+              ) : null}
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="address">Address</Label>
+                <Input
+                  id="address"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  className="h-11 rounded-2xl border-black/10 bg-black/[0.02] px-4"
+                />
               </div>
             </div>
 
-            <DialogFooter className="pt-6 border-t border-slate-100">
-              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="rounded-lg hover:bg-slate-50 hover:text-slate-900 border-slate-200">Cancel</Button>
-              <Button type="submit" className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-sm">{editingUser ? "Save Changes" : "Create User"}</Button>
+            <DialogFooter className="border-t border-black/6 pt-5">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsDialogOpen(false)}
+                className="h-11 rounded-2xl border-black/10 bg-white px-5 text-black hover:bg-black/[0.03]"
+              >
+                Cancel
+              </Button>
+              <Button type="submit" className="h-11 rounded-2xl bg-black px-5 text-white hover:bg-black/90">
+                {editingUser ? "Save changes" : "Create user"}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </DashboardPageShell>
   );
 }

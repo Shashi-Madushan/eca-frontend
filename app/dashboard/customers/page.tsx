@@ -1,25 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { CustomerType } from "@/types/models";
+import { useEffect, useMemo, useState } from "react";
+import { Award, Edit2, Plus, Search, Star, Trash2, UsersRound } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { toast } from "sonner";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Search, Plus, Edit2, Trash2, Award } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  DashboardPageHeader,
+  DashboardPageShell,
+  EmptyState,
+  MetricCard,
+  SoftBadge,
+  SurfacePanel,
+  ToolbarRow,
+  formatEnumLabel,
+} from "@/components/dashboard/ui";
+import { CustomerType } from "@/types/models";
+import { toast } from "sonner";
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<CustomerType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
-
-  // Dialog State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<CustomerType | null>(null);
-
-  // Form State
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -48,11 +55,15 @@ export default function CustomersPage() {
     fetchCustomers();
   }, []);
 
-  // Basic client-side filtering since there is no customer search API setup
-  const filteredCustomers = customers.filter(c => 
-    c.name.toLowerCase().includes(search.toLowerCase()) || 
-    c.email.toLowerCase().includes(search.toLowerCase()) ||
-    c.customerId.toLowerCase().includes(search.toLowerCase())
+  const filteredCustomers = useMemo(
+    () =>
+      customers.filter(
+        (customer) =>
+          customer.name.toLowerCase().includes(search.toLowerCase()) ||
+          customer.email.toLowerCase().includes(search.toLowerCase()) ||
+          customer.customerId.toLowerCase().includes(search.toLowerCase()),
+      ),
+    [customers, search],
   );
 
   const resetForm = () => {
@@ -87,7 +98,7 @@ export default function CustomersPage() {
     try {
       const url = editingCustomer ? `/api/iam/customers/${editingCustomer.id}` : `/api/iam/customers`;
       const method = editingCustomer ? "PUT" : "POST";
-      
+
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
@@ -95,7 +106,7 @@ export default function CustomersPage() {
       });
 
       if (!res.ok) throw new Error(editingCustomer ? "Failed to update customer" : "Failed to create customer");
-      
+
       toast.success(editingCustomer ? "Customer updated successfully!" : "Customer created successfully!");
       setIsDialogOpen(false);
       resetForm();
@@ -119,125 +130,144 @@ export default function CustomersPage() {
     }
   };
 
-  return (
-    <div className="flex-1 space-y-8 p-8 pt-6">
-      {/* Header Section */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900">Customers</h2>
-          <p className="text-slate-500 mt-2">View and manage your entire customer base.</p>
-        </div>
-        <Button onClick={() => handleOpenDialog()} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all rounded-lg px-4 h-10">
-          <Plus className="mr-2 h-4 w-4" /> Add Customer
-        </Button>
-      </div>
+  const premiumCustomers = useMemo(
+    () => customers.filter((customer) => customer.customerType === "PREMIUM").length,
+    [customers],
+  );
+  const totalPoints = useMemo(
+    () => customers.reduce((sum, customer) => sum + (customer.loyaltyPoints || 0), 0),
+    [customers],
+  );
 
-      {/* Main Content Area */}
-      <div className="bg-white rounded-2xl shadow-[0px_2px_12px_rgba(0,0,0,0.04)] border border-slate-100/60 overflow-hidden">
-        
-        {/* Toolbar */}
-        <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-white">
-          <div className="relative w-full max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input 
-              type="text" 
-              placeholder="Search customers..." 
+  return (
+    <DashboardPageShell>
+      <DashboardPageHeader
+        eyebrow="Customer Desk"
+        title="Customer management"
+        description="Keep your shopper database polished with loyalty status, contact details, and purchase visibility."
+        actions={
+          <Button
+            onClick={() => handleOpenDialog()}
+            className="h-11 rounded-2xl bg-black px-5 text-white hover:bg-black/90"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add customer
+          </Button>
+        }
+      >
+        <div className="grid gap-4 md:grid-cols-3">
+          <MetricCard label="Customers" value={customers.length} helper="Profiles in the system" />
+          <MetricCard label="Premium members" value={premiumCustomers} helper="High-value customer accounts" />
+          <MetricCard label="Loyalty points" value={totalPoints} helper="Combined points across the base" />
+        </div>
+      </DashboardPageHeader>
+
+      <SurfacePanel>
+        <ToolbarRow>
+          <div className="relative w-full max-w-xl">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-black/35" />
+            <Input
+              type="text"
+              placeholder="Search customers, emails, or customer IDs..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 bg-slate-50/50 border-slate-200/60 focus-visible:ring-blue-500 rounded-xl h-10 w-full"
+              className="h-11 rounded-2xl border-black/10 bg-white pl-11 shadow-[0_8px_24px_rgba(15,23,42,0.04)] placeholder:text-black/35"
             />
           </div>
-        </div>
+          <SoftBadge>{filteredCustomers.length} visible</SoftBadge>
+        </ToolbarRow>
 
-        {/* Table */}
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-slate-50/50 hover:bg-slate-50/50 border-b-slate-100">
-                <TableHead className="font-semibold text-slate-500 text-xs uppercase tracking-wider h-11">Customer</TableHead>
-                <TableHead className="font-semibold text-slate-500 text-xs uppercase tracking-wider h-11">Contact</TableHead>
-                <TableHead className="font-semibold text-slate-500 text-xs uppercase tracking-wider h-11">Plan</TableHead>
-                <TableHead className="text-right font-semibold text-slate-500 text-xs uppercase tracking-wider h-11">Loyalty / Spends</TableHead>
-                <TableHead className="text-right font-semibold text-slate-500 text-xs uppercase tracking-wider h-11 w-[120px]">Actions</TableHead>
+              <TableRow className="border-black/6 bg-black/[0.02] hover:bg-black/[0.02]">
+                <TableHead className="h-12 px-6 text-xs font-semibold uppercase tracking-[0.22em] text-black/45">
+                  Customer
+                </TableHead>
+                <TableHead className="text-xs font-semibold uppercase tracking-[0.22em] text-black/45">
+                  Contact
+                </TableHead>
+                <TableHead className="text-xs font-semibold uppercase tracking-[0.22em] text-black/45">
+                  Tier
+                </TableHead>
+                <TableHead className="text-right text-xs font-semibold uppercase tracking-[0.22em] text-black/45">
+                  Loyalty
+                </TableHead>
+                <TableHead className="px-6 text-right text-xs font-semibold uppercase tracking-[0.22em] text-black/45">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-48 text-center text-slate-500">
-                    <div className="flex flex-col items-center justify-center space-y-3">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                      <p className="text-sm">Loading customers...</p>
-                    </div>
+                  <TableCell colSpan={5} className="h-72 text-center text-black/55">
+                    Loading customers...
                   </TableCell>
                 </TableRow>
               ) : filteredCustomers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-48 text-center text-slate-500">
-                     <div className="flex flex-col items-center justify-center">
-                      <p className="text-sm font-medium text-slate-900">No customers found</p>
-                      <p className="text-xs mt-1">Try adjusting your search query or add a new customer.</p>
-                    </div>
+                  <TableCell colSpan={5} className="p-0">
+                    <EmptyState
+                      icon={<UsersRound className="h-6 w-6" />}
+                      title="No customers found"
+                      description="Try another search or create a new customer record."
+                    />
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredCustomers.map((customer) => (
-                  <TableRow key={customer.id} className="hover:bg-slate-50/80 border-b-slate-50 transition-colors group">
-                    {/* Customer Info Column */}
-                    <TableCell className="py-4">
+                  <TableRow key={customer.id} className="border-black/6 hover:bg-black/[0.02]">
+                    <TableCell className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm shadow-sm ${customer.customerType === 'PREMIUM' ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-black/8 bg-black text-sm font-semibold text-white">
                           {customer.name?.charAt(0) || "C"}
                         </div>
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-slate-900 text-sm">{customer.name}</span>
-                          <span className="text-xs text-slate-500 font-medium font-mono">{customer.customerId}</span>
+                        <div className="space-y-1">
+                          <p className="font-semibold text-black">{customer.name}</p>
+                          <p className="text-xs text-black/45">{customer.customerId}</p>
                         </div>
                       </div>
                     </TableCell>
-
-                    {/* Contact Column */}
-                    <TableCell>
-                      <span className="text-sm text-slate-600 block">{customer.email}</span>
-                      <span className="text-xs text-slate-400 block">{customer.mobile}</span>
+                    <TableCell className="py-4">
+                      <p className="text-sm font-medium text-black/78">{customer.email}</p>
+                      <p className="text-xs text-black/45">{customer.mobile}</p>
                     </TableCell>
-
-                    {/* Plan Column */}
-                    <TableCell>
-                      <div className="flex items-center">
-                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
-                          customer.customerType === 'PREMIUM' 
-                            ? 'bg-purple-100 text-purple-700' 
-                            : 'bg-slate-100 text-slate-700'
-                        }`}>
-                          {customer.customerType === 'PREMIUM' && <Award className="w-3 h-3 mr-1" />}
-                          {customer.customerType.charAt(0) + customer.customerType.slice(1).toLowerCase()}
-                        </span>
-                      </div>
+                    <TableCell className="py-4">
+                      <span
+                        className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${
+                          customer.customerType === "PREMIUM"
+                            ? "border-black bg-black text-white"
+                            : "border-black/10 bg-white text-black/70"
+                        }`}
+                      >
+                        {customer.customerType === "PREMIUM" ? <Award className="mr-1.5 h-3.5 w-3.5" /> : null}
+                        {formatEnumLabel(customer.customerType)}
+                      </span>
                     </TableCell>
-
-                    {/* Points Column */}
-                    <TableCell className="text-right">
-                       <div className="flex flex-col items-end">
-                          <span className="font-semibold text-slate-800 text-sm">
-                            {customer.loyaltyPoints} <span className="text-xs text-slate-400 font-normal">pts</span>
-                          </span>
-                          <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full mt-1">
-                            ${customer.totalPurchases?.toFixed(2) || "0.00"}
-                          </span>
-                       </div>
+                    <TableCell className="py-4 text-right">
+                      <p className="font-semibold text-black">{customer.loyaltyPoints} pts</p>
+                      <p className="text-xs text-black/45">
+                        ${customer.totalPurchases?.toFixed(2) || "0.00"} spent
+                      </p>
                     </TableCell>
-
-                    {/* Actions Column */}
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50" onClick={() => handleOpenDialog(customer)}>
+                    <TableCell className="px-6 py-4">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="icon-sm"
+                          className="rounded-xl border-black/10 bg-white hover:bg-black/[0.03]"
+                          onClick={() => handleOpenDialog(customer)}
+                        >
                           <Edit2 className="h-4 w-4" />
-                          <span className="sr-only">Edit</span>
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50" onClick={() => deleteCustomer(customer.customerId)}>
+                        <Button
+                          variant="outline"
+                          size="icon-sm"
+                          className="rounded-xl border-black/10 bg-white hover:bg-black/[0.03]"
+                          onClick={() => deleteCustomer(customer.customerId)}
+                        >
                           <Trash2 className="h-4 w-4" />
-                          <span className="sr-only">Delete</span>
                         </Button>
                       </div>
                     </TableCell>
@@ -247,64 +277,108 @@ export default function CustomersPage() {
             </TableBody>
           </Table>
         </div>
-      </div>
+      </SurfacePanel>
 
-      {/* Modern Dialog Form */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-md bg-white p-0 border-0 shadow-2xl rounded-2xl overflow-hidden">
-           <div className="px-6 py-6 border-b border-slate-100 bg-slate-50/50">
-            <DialogTitle className="text-xl font-semibold text-slate-900">
-              {editingCustomer ? "Edit Customer" : "Add New Customer"}
-            </DialogTitle>
-            <p className="text-sm text-slate-500 mt-1">
-              {editingCustomer ? "Update the customer's information." : "Enter the required details to create a new customer record."}
-            </p>
-          </div>
-          
-          <form onSubmit={handleSubmit} className="px-6 py-6 space-y-5">
-            <div className="space-y-1.5">
-              <Label htmlFor="name" className="text-sm font-medium text-slate-700">Full Name</Label>
-              <Input id="name" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="rounded-lg shadow-sm border-slate-200" />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-sm font-medium text-slate-700">Email Address</Label>
-              <Input id="email" type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="rounded-lg shadow-sm border-slate-200" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-5">
-               <div className="space-y-1.5">
-                <Label htmlFor="mobile" className="text-sm font-medium text-slate-700">Mobile Number</Label>
-                <Input id="mobile" required value={formData.mobile} onChange={e => setFormData({...formData, mobile: e.target.value})} className="rounded-lg shadow-sm border-slate-200" />
+      <Dialog
+        open={isDialogOpen}
+        onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) resetForm();
+        }}
+      >
+        <DialogContent className="max-w-2xl rounded-[32px] border border-black/8 bg-white p-0 shadow-[0_28px_100px_rgba(15,23,42,0.12)]">
+          <div className="border-b border-black/6 bg-[linear-gradient(180deg,_#ffffff,_#f4f4f5)] px-6 py-6">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-black/8 bg-black text-white">
+                <Star className="h-5 w-5" />
               </div>
+              <div>
+                <DialogTitle className="text-2xl font-semibold tracking-[-0.04em] text-black">
+                  {editingCustomer ? "Edit customer" : "Add customer"}
+                </DialogTitle>
+                <p className="mt-1 text-sm text-black/55">
+                  {editingCustomer
+                    ? "Update the customer profile and loyalty details."
+                    : "Create a new customer profile in the POS workspace."}
+                </p>
+              </div>
+            </div>
+          </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="customerType" className="text-sm font-medium text-slate-700">Customer Tier</Label>
-                <select 
-                  id="customerType" 
-                  className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                  value={formData.customerType} 
-                  onChange={e => setFormData({...formData, customerType: e.target.value as "REGULAR" | "PREMIUM"})}
+          <form onSubmit={handleSubmit} className="space-y-6 px-6 py-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="name">Full Name</Label>
+                <Input
+                  id="name"
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="h-11 rounded-2xl border-black/10 bg-black/[0.02] px-4"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="h-11 rounded-2xl border-black/10 bg-black/[0.02] px-4"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="mobile">Mobile Number</Label>
+                <Input
+                  id="mobile"
+                  required
+                  value={formData.mobile}
+                  onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
+                  className="h-11 rounded-2xl border-black/10 bg-black/[0.02] px-4"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="customerType">Customer Tier</Label>
+                <select
+                  id="customerType"
+                  className="pos-select"
+                  value={formData.customerType}
+                  onChange={(e) =>
+                    setFormData({ ...formData, customerType: e.target.value as "REGULAR" | "PREMIUM" })
+                  }
                 >
                   <option value="REGULAR">Regular</option>
                   <option value="PREMIUM">Premium</option>
                 </select>
               </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="address">Address</Label>
+                <Input
+                  id="address"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  className="h-11 rounded-2xl border-black/10 bg-black/[0.02] px-4"
+                />
+              </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="address" className="text-sm font-medium text-slate-700">Physical Address (Optional)</Label>
-              <Input id="address" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} className="rounded-lg shadow-sm border-slate-200" />
-            </div>
-
-
-            <DialogFooter className="pt-6 border-t border-slate-100">
-              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="rounded-lg hover:bg-slate-50 hover:text-slate-900 border-slate-200">Cancel</Button>
-              <Button type="submit" className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-sm">{editingCustomer ? "Save Changes" : "Create Customer"}</Button>
+            <DialogFooter className="border-t border-black/6 pt-5">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsDialogOpen(false)}
+                className="h-11 rounded-2xl border-black/10 bg-white px-5 text-black hover:bg-black/[0.03]"
+              >
+                Cancel
+              </Button>
+              <Button type="submit" className="h-11 rounded-2xl bg-black px-5 text-white hover:bg-black/90">
+                {editingCustomer ? "Save changes" : "Create customer"}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </DashboardPageShell>
   );
 }

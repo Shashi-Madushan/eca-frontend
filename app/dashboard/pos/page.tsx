@@ -1,14 +1,24 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CreateOrderPayload, CustomerType, OrderItemDto, OrderStatus, PaymentMethod, ProductDto } from "@/types/models";
+import Image from "next/image";
+import { Minus, Plus, Search, ShoppingCart, Trash2, User, Wallet } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
-import { Minus, Plus, Search, ShoppingCart, Trash2, User } from "lucide-react";
+import {
+  DashboardPageHeader,
+  DashboardPageShell,
+  EmptyState,
+  MetricCard,
+  SoftBadge,
+  SurfacePanel,
+  formatEnumLabel,
+} from "@/components/dashboard/ui";
 import { useAuth } from "@/context/AuthContext";
-import Image from "next/image";
 import { getProxiedImageUrl } from "@/lib/imageProxy";
+import { CreateOrderPayload, CustomerType, OrderItemDto, OrderStatus, PaymentMethod, ProductDto } from "@/types/models";
+import { toast } from "sonner";
 
 const PAYMENT_METHODS: PaymentMethod[] = [
   "CASH",
@@ -44,7 +54,6 @@ export default function PosPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
-
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
   const [orderStatus, setOrderStatus] = useState<OrderStatus>("PENDING");
@@ -61,7 +70,7 @@ export default function PosPage() {
       const res = await fetch(baseUrl);
       if (!res.ok) throw new Error("Failed to fetch products");
       const data = await res.json();
-      setProducts(Array.isArray(data) ? data.filter((p) => p.isActive) : []);
+      setProducts(Array.isArray(data) ? data.filter((product) => product.isActive) : []);
     } catch (error) {
       console.error(error);
       setProducts([]);
@@ -97,13 +106,15 @@ export default function PosPage() {
     return () => clearTimeout(timeout);
   }, [searchQuery]);
 
-  const subtotalAmount = useMemo(() => {
-    return cartItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
-  }, [cartItems]);
+  const subtotalAmount = useMemo(
+    () => cartItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0),
+    [cartItems],
+  );
 
-  const totalAmount = useMemo(() => {
-    return Math.max(subtotalAmount + (Number(taxAmount) || 0) - (Number(discountAmount) || 0), 0);
-  }, [discountAmount, subtotalAmount, taxAmount]);
+  const totalAmount = useMemo(
+    () => Math.max(subtotalAmount + (Number(taxAmount) || 0) - (Number(discountAmount) || 0), 0),
+    [discountAmount, subtotalAmount, taxAmount],
+  );
 
   const addToCart = (product: ProductDto) => {
     if (product.stockQuantity <= 0) {
@@ -226,51 +237,66 @@ export default function PosPage() {
     }
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("en-US", {
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "USD",
     }).format(value || 0);
-  };
 
   return (
-    <div className="flex-1 p-6 lg:p-8">
-      <div className="mb-6 flex flex-col md:flex-row md:items-end md:justify-between gap-3">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900">POS</h2>
-          <p className="text-slate-500 mt-2">Fast checkout with product search and right-side order placement.</p>
+    <DashboardPageShell>
+      {/* <DashboardPageHeader
+        eyebrow="Checkout"
+        title="POS terminal"
+        description="Run front-counter checkout with a polished product browser, customer assignment, and cart summary."
+      >
+        <div className="grid gap-4 md:grid-cols-4">
+          <MetricCard label="Operator" value={user?.username || "Unknown"} helper={user?.userType || "N/A"} />
+          <MetricCard label="Active products" value={products.length} helper="Sellable catalog results" />
+          <MetricCard label="Cart items" value={cartItems.length} helper="Distinct line items in cart" />
+          <MetricCard label="Cart total" value={formatCurrency(totalAmount)} helper="Live checkout total" />
         </div>
-        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 inline-flex items-center gap-2">
-          <User className="h-4 w-4 text-slate-500" />
-          <span>Operator: {user?.username || "Unknown"}</span>
-        </div>
-      </div>
+      </DashboardPageHeader> */}
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_390px] gap-6 items-start">
-        <section className="space-y-4">
-          <div className="relative max-w-lg">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search product name..."
-              className="pl-9 bg-white rounded-xl border-slate-200"
-            />
-          </div>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_420px]">
+        <section className="flex flex-col gap-5">
+          <SurfacePanel className="p-5 sm:p-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="relative w-full max-w-xl">
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-black/35" />
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search products by name..."
+                  className="h-12 rounded-2xl border-black/10 bg-black/[0.02] pl-11 shadow-none placeholder:text-black/35"
+                />
+              </div>
+              <SoftBadge>{products.length} results</SoftBadge>
+            </div>
+          </SurfacePanel>
 
-          {isLoadingProducts ? (
-            <div className="rounded-2xl border border-slate-100 bg-white p-8 text-center text-slate-500">Loading products...</div>
-          ) : products.length === 0 ? (
-            <div className="rounded-2xl border border-slate-100 bg-white p-8 text-center text-slate-500">No active products found.</div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {products.map((product) => (
+          <div className="flex-1 overflow-y-auto">
+            {isLoadingProducts ? (
+              <SurfacePanel className="flex min-h-72 items-center justify-center text-sm text-black/55">
+                Loading products...
+              </SurfacePanel>
+            ) : products.length === 0 ? (
+              <SurfacePanel>
+                <EmptyState
+                  icon={<ShoppingCart className="h-6 w-6" />}
+                  title="No active products found"
+                  description="Try another search term or make sure active products exist in the catalog."
+                />
+              </SurfacePanel>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+                {products.map((product) => (
                 <article
                   key={product.productId}
-                  className="rounded-2xl border border-slate-100 bg-white overflow-hidden shadow-[0px_2px_10px_rgba(0,0,0,0.03)]"
+                  className="overflow-hidden rounded-[28px] border border-black/8 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.05)]"
                 >
                   {product.images && product.images.length > 0 ? (
-                    <div className="relative w-full h-40 bg-slate-100 mb-3">
+                    <div className="relative h-48 w-full bg-black/[0.03]">
                       <Image
                         src={getProxiedImageUrl(product.images[0])}
                         alt={product.name}
@@ -279,207 +305,270 @@ export default function PosPage() {
                       />
                     </div>
                   ) : (
-                    <div className="w-full h-40 bg-gradient-to-br from-slate-200 to-slate-100 mb-3 flex items-center justify-center">
-                      <span className="text-slate-400 text-sm">No image</span>
+                    <div className="flex h-48 items-center justify-center bg-[linear-gradient(180deg,_#f5f5f5,_#ebebeb)] text-sm text-black/35">
+                      No image
                     </div>
                   )}
-                  
-                  <div className="p-4">
-                    <div className="mb-3 flex items-start justify-between gap-2">
+
+                  <div className="space-y-4 p-5">
+                    <div className="flex items-start justify-between gap-3">
                       <div>
-                        <h3 className="font-semibold text-slate-900 line-clamp-2">{product.name}</h3>
-                        <p className="text-xs text-slate-500 mt-1">{product.productId}</p>
+                        <h3 className="line-clamp-2 text-lg font-semibold tracking-[-0.03em] text-black">
+                          {product.name}
+                        </h3>
+                        <p className="mt-1 text-xs text-black/45">{product.productId}</p>
                       </div>
-                      <span className="inline-flex h-6 items-center rounded-full bg-slate-100 px-2 text-[11px] text-slate-600">
+                      <span className="inline-flex rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/65">
                         {product.category}
                       </span>
                     </div>
 
-                    <div className="mb-4 flex items-center justify-between">
-                      <p className="text-lg font-bold text-slate-900">{formatCurrency(product.price)}</p>
-                      <p className={`text-xs font-semibold ${product.stockQuantity <= 5 ? "text-rose-600" : "text-emerald-600"}`}>
-                        Stock: {product.stockQuantity}
-                      </p>
+                    <div className="grid gap-3 rounded-[22px] border border-black/8 bg-black/[0.02] p-4 sm:grid-cols-2">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-black/38">Price</p>
+                        <p className="mt-1 text-lg font-semibold text-black">{formatCurrency(product.price)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-black/38">Stock</p>
+                        <p className="mt-1 text-lg font-semibold text-black">{product.stockQuantity}</p>
+                      </div>
                     </div>
 
                     <Button
                       onClick={() => addToCart(product)}
                       disabled={product.stockQuantity <= 0}
-                      className="w-full rounded-lg bg-blue-600 hover:bg-blue-700 text-white"
+                      className="h-11 w-full rounded-2xl bg-black text-white hover:bg-black/90"
                     >
-                      <Plus className="h-4 w-4 mr-2" /> Add to Cart
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add to cart
                     </Button>
                   </div>
                 </article>
               ))}
             </div>
-          )}
-        </section>
-
-        <aside className="rounded-2xl border border-slate-100 bg-white p-4 lg:p-5 shadow-[0px_2px_12px_rgba(0,0,0,0.04)] xl:sticky xl:top-6">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
-            <h3 className="font-semibold text-slate-900 inline-flex items-center gap-2">
-              <ShoppingCart className="h-4 w-4" /> Order Placement
-            </h3>
-            <span className="text-xs text-slate-500">{cartItems.length} items</span>
-          </div>
-
-          <div className="space-y-3 mb-4">
-            <div className="space-y-1.5">
-              <label htmlFor="customer" className="text-sm font-medium text-slate-700">Customer</label>
-              <select
-                id="customer"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={selectedCustomerId}
-                onChange={(e) => setSelectedCustomerId(e.target.value)}
-                required
-              >
-                <option value="">Select customer</option>
-                {customers.map((customer) => (
-                  <option key={customer.customerId} value={customer.customerId}>
-                    {customer.customerId} - {customer.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label htmlFor="paymentMethod" className="text-sm font-medium text-slate-700">Payment Method</label>
-              <select
-                id="paymentMethod"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-              >
-                {PAYMENT_METHODS.map((method) => (
-                  <option key={method} value={method}>
-                    {method}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label htmlFor="orderStatus" className="text-sm font-medium text-slate-700">Order Status</label>
-              <select
-                id="orderStatus"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={orderStatus}
-                onChange={(e) => setOrderStatus(e.target.value as OrderStatus)}
-              >
-                {ORDER_STATUSES.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label htmlFor="taxAmount" className="text-sm font-medium text-slate-700">Tax</label>
-                <Input
-                  id="taxAmount"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={taxAmount}
-                  onChange={(e) => setTaxAmount(Number(e.target.value) || 0)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label htmlFor="discountAmount" className="text-sm font-medium text-slate-700">Discount</label>
-                <Input
-                  id="discountAmount"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={discountAmount}
-                  onChange={(e) => setDiscountAmount(Number(e.target.value) || 0)}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-2 max-h-70 overflow-y-auto pr-1">
-            {cartItems.length === 0 ? (
-              <p className="text-sm text-slate-500 rounded-lg border border-dashed border-slate-200 p-3">Cart is empty.</p>
-            ) : (
-              cartItems.map((item) => (
-                <div key={item.productId} className="rounded-lg border border-slate-100 p-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="font-medium text-sm text-slate-900">{item.productName}</p>
-                      <p className="text-xs text-slate-500">{item.productId}</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeCartItem(item.productId)}
-                      className="text-slate-400 hover:text-rose-600"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-
-                  <div className="mt-2 flex items-center justify-between">
-                    <p className="text-sm font-semibold text-slate-900">{formatCurrency(item.unitPrice)}</p>
-                    <div className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-1 py-1">
-                      <button
-                        type="button"
-                        onClick={() => updateCartQuantity(item.productId, item.quantity - 1)}
-                        className="h-6 w-6 inline-flex items-center justify-center text-slate-600"
-                      >
-                        <Minus className="h-3.5 w-3.5" />
-                      </button>
-                      <span className="w-6 text-center text-sm">{item.quantity}</span>
-                      <button
-                        type="button"
-                        onClick={() => updateCartQuantity(item.productId, item.quantity + 1)}
-                        className="h-6 w-6 inline-flex items-center justify-center text-slate-600"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))
             )}
           </div>
+        </section>
 
-          <div className="mt-4 border-t border-slate-100 pt-4 space-y-2 text-sm">
-            <div className="flex items-center justify-between text-slate-600">
-              <span>Subtotal</span>
-              <span>{formatCurrency(subtotalAmount)}</span>
+        <aside className="xl:sticky xl:top-28 xl:self-start">
+          <SurfacePanel className="overflow-hidden">
+            <div className="border-b border-black/6 bg-[linear-gradient(180deg,_#111111,_#252525)] px-5 py-5 text-white sm:px-6">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/55">Current sale</p>
+                  <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">Checkout cart</h2>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/10 px-3 py-1 text-xs font-medium text-white/75">
+                  {cartItems.length} items
+                </div>
+              </div>
             </div>
-            <div className="flex items-center justify-between text-slate-600">
-              <span>Tax</span>
-              <span>{formatCurrency(Number(taxAmount) || 0)}</span>
-            </div>
-            <div className="flex items-center justify-between text-slate-600">
-              <span>Discount</span>
-              <span>- {formatCurrency(Number(discountAmount) || 0)}</span>
-            </div>
-            <div className="flex items-center justify-between text-base font-semibold text-slate-900 pt-1">
-              <span>Total</span>
-              <span>{formatCurrency(totalAmount)}</span>
-            </div>
-          </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <Button type="button" variant="outline" onClick={resetOrder}>
-              Clear
-            </Button>
-            <Button
-              type="button"
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-              onClick={placeOrder}
-              disabled={isPlacingOrder || cartItems.length === 0}
-            >
-              {isPlacingOrder ? "Placing..." : "Place Order"}
-            </Button>
-          </div>
+            <div className="space-y-5 p-5 sm:p-6">
+              <div className="grid gap-4">
+                <div className="space-y-2">
+                  <label htmlFor="customer" className="text-sm font-medium text-black/75">
+                    Customer
+                  </label>
+                  <select
+                    id="customer"
+                    className="pos-select"
+                    value={selectedCustomerId}
+                    onChange={(e) => setSelectedCustomerId(e.target.value)}
+                    required
+                  >
+                    <option value="">Select customer</option>
+                    {customers.map((customer) => (
+                      <option key={customer.customerId} value={customer.customerId}>
+                        {customer.customerId} - {customer.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <label htmlFor="paymentMethod" className="text-sm font-medium text-black/75">
+                      Payment
+                    </label>
+                    <select
+                      id="paymentMethod"
+                      className="pos-select"
+                      value={paymentMethod}
+                      onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                    >
+                      {PAYMENT_METHODS.map((method) => (
+                        <option key={method} value={method}>
+                          {formatEnumLabel(method)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="orderStatus" className="text-sm font-medium text-black/75">
+                      Status
+                    </label>
+                    <select
+                      id="orderStatus"
+                      className="pos-select"
+                      value={orderStatus}
+                      onChange={(e) => setOrderStatus(e.target.value as OrderStatus)}
+                    >
+                      {ORDER_STATUSES.map((status) => (
+                        <option key={status} value={status}>
+                          {formatEnumLabel(status)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <label htmlFor="taxAmount" className="text-sm font-medium text-black/75">
+                      Tax
+                    </label>
+                    <Input
+                      id="taxAmount"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={taxAmount}
+                      onChange={(e) => setTaxAmount(Number(e.target.value) || 0)}
+                      className="h-11 rounded-2xl border-black/10 bg-black/[0.02] px-4"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="discountAmount" className="text-sm font-medium text-black/75">
+                      Discount
+                    </label>
+                    <Input
+                      id="discountAmount"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={discountAmount}
+                      onChange={(e) => setDiscountAmount(Number(e.target.value) || 0)}
+                      className="h-11 rounded-2xl border-black/10 bg-black/[0.02] px-4"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-[22px] border border-black/8 bg-black/[0.02] p-4">
+                    <div className="flex items-center gap-2 text-black/55">
+                      <User className="h-4 w-4" />
+                      <span className="text-sm">Operator</span>
+                    </div>
+                    <p className="mt-2 font-semibold text-black">{user?.username || "Unknown"}</p>
+                  </div>
+                  <div className="rounded-[22px] border border-black/8 bg-black/[0.02] p-4">
+                    <div className="flex items-center gap-2 text-black/55">
+                      <Wallet className="h-4 w-4" />
+                      <span className="text-sm">Payment</span>
+                    </div>
+                    <p className="mt-2 font-semibold text-black">{formatEnumLabel(paymentMethod)}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold tracking-[-0.03em] text-black">Cart items</h3>
+                  <SoftBadge>{cartItems.length} lines</SoftBadge>
+                </div>
+
+                <div className="pos-scrollbar max-h-[360px] space-y-3 overflow-y-auto pr-1">
+                  {cartItems.length === 0 ? (
+                    <div className="rounded-[24px] border border-dashed border-black/12 bg-black/[0.02] p-5 text-sm text-black/55">
+                      Cart is empty. Add products from the left to start checkout.
+                    </div>
+                  ) : (
+                    cartItems.map((item) => (
+                      <div key={item.productId} className="rounded-[24px] border border-black/8 bg-black/[0.02] p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-semibold text-black">{item.productName}</p>
+                            <p className="text-xs text-black/45">{item.productId}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeCartItem(item.productId)}
+                            className="rounded-full p-1 text-black/35 transition hover:bg-black/5 hover:text-black"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+
+                        <div className="mt-4 flex items-center justify-between gap-3">
+                          <p className="text-sm font-semibold text-black">{formatCurrency(item.unitPrice)}</p>
+                          <div className="inline-flex items-center gap-2 rounded-2xl border border-black/10 bg-white px-2 py-2">
+                            <button
+                              type="button"
+                              onClick={() => updateCartQuantity(item.productId, item.quantity - 1)}
+                              className="flex h-7 w-7 items-center justify-center rounded-full text-black/65 transition hover:bg-black/[0.04]"
+                            >
+                              <Minus className="h-3.5 w-3.5" />
+                            </button>
+                            <span className="w-8 text-center text-sm font-medium text-black">{item.quantity}</span>
+                            <button
+                              type="button"
+                              onClick={() => updateCartQuantity(item.productId, item.quantity + 1)}
+                              className="flex h-7 w-7 items-center justify-center rounded-full text-black/65 transition hover:bg-black/[0.04]"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-[28px] border border-black/8 bg-black/[0.02] p-5">
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center justify-between text-black/62">
+                    <span>Subtotal</span>
+                    <span>{formatCurrency(subtotalAmount)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-black/62">
+                    <span>Tax</span>
+                    <span>{formatCurrency(Number(taxAmount) || 0)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-black/62">
+                    <span>Discount</span>
+                    <span>- {formatCurrency(Number(discountAmount) || 0)}</span>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-black/8 pt-3 text-base font-semibold text-black">
+                    <span>Total</span>
+                    <span>{formatCurrency(totalAmount)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={resetOrder}
+                  className="h-11 rounded-2xl border-black/10 bg-white text-black hover:bg-black/[0.03]"
+                >
+                  Clear
+                </Button>
+                <Button
+                  type="button"
+                  className="h-11 rounded-2xl bg-black text-white hover:bg-black/90"
+                  onClick={placeOrder}
+                  disabled={isPlacingOrder || cartItems.length === 0}
+                >
+                  {isPlacingOrder ? "Placing..." : "Place order"}
+                </Button>
+              </div>
+            </div>
+          </SurfacePanel>
         </aside>
       </div>
-    </div>
+    </DashboardPageShell>
   );
 }
