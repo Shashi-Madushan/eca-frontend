@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_GATEWAY = process.env.API_GATEWAY || "http://localhost:7001";
+const rawGateway = process.env.API_GATEWAY || "http://localhost:7001";
+const normalizedGateway = rawGateway.startsWith("http://") || rawGateway.startsWith("https://")
+  ? rawGateway
+  : `http://${rawGateway}`;
+const API_GATEWAY = normalizedGateway.replace(/\/$/, "");
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ slug: string[] }> }) {
   return handleProxy(req, await params);
@@ -41,7 +45,7 @@ async function handleProxy(req: NextRequest, params: { slug: string[] }) {
     // Remove headers that might cause issues with Next.js Response
     responseHeaders.delete("content-encoding");
 
-    let responseBody = await res.text();
+    const responseBody = await res.text();
 
     return new NextResponse(responseBody, {
       status: res.status,

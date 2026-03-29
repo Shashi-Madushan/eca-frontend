@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Search, Plus, Edit2, Trash2, PackageSearch, ImageOff } from "lucide-react";
 import { ProductForm } from "../../../components/products/product-form";
+import { getProxiedImageUrl } from "@/lib/imageProxy";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<ProductDto[]>([]);
@@ -142,7 +143,7 @@ export default function ProductsPage() {
                       <div className="h-12 w-12 rounded-lg border border-slate-200 overflow-hidden bg-slate-50 flex items-center justify-center shadow-sm">
                         {product.images && product.images.length > 0 ? (
                           <img 
-                            src={product.images[0]} 
+                            src={getProxiedImageUrl(product.images[0])} 
                             alt={product.name} 
                             className="h-full w-full object-cover" 
                           />

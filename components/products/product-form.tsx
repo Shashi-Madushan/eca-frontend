@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { X, UploadCloud, ImageIcon, AlertCircle } from "lucide-react";
+import { getProxiedImageUrl } from "@/lib/imageProxy";
 
 interface ProductFormProps {
   initialData?: ProductDto;
@@ -423,7 +424,7 @@ export function ProductForm({ initialData, onSuccess, onCancel }: ProductFormPro
               {/* Existing Images */}
               {existingImages.map((url, i) => (
                 <div key={`existing-${i}`} className="relative group border rounded-lg overflow-hidden border-slate-200 bg-slate-50 aspect-square">
-                  <img src={url} alt={`Existing product ${i}`} className="object-cover w-full h-full" />
+                  <img src={getProxiedImageUrl(url)} alt={`Existing product ${i}`} className="object-cover w-full h-full" />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <Button 
                       type="button" 

@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     const user = responseText ? JSON.parse(responseText) : null;
     return NextResponse.json(user, { status: 200 });
   } catch (error) {
-    console.error("Login proxy error:", error);
+    console.error("Admin login proxy error:", error);
     return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }

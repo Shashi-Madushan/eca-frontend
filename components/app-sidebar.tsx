@@ -1,4 +1,6 @@
-import { Calendar, Home, Inbox, Search, Settings, Users, UserSquare2, LogOut, Package } from "lucide-react"
+"use client";
+
+import { Home, Users, UserSquare2, LogOut, Package, ClipboardList, ShoppingCart } from "lucide-react"
 
 import {
   Sidebar,
@@ -12,6 +14,7 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar"
 import Link from "next/link"
+import { useAuth } from "@/context/AuthContext"
 
 const items = [
   {
@@ -34,14 +37,32 @@ const items = [
     url: "/dashboard/products",
     icon: Package,
   },
+  {
+    title: "Order Management",
+    url: "/dashboard/orders",
+    icon: ClipboardList,
+  },
+  {
+    title: "POS",
+    url: "/dashboard/pos",
+    icon: ShoppingCart,
+  },
 ]
 
 export function AppSidebar() {
+  const { user } = useAuth();
+
   return (
     <Sidebar className="border-r border-slate-200 bg-white">
       <SidebarContent className="pt-4">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-4">ECA Application</SidebarGroupLabel>
+          <div className="px-4 pb-3 mb-2 border-b border-slate-100">
+            <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Operator</p>
+            <p className="text-sm font-bold text-slate-900">{user?.username || "Unknown"}</p>
+            <p className="text-xs text-slate-500">{user?.userType || "N/A"}</p>
+          </div>
+
+          <SidebarGroupLabel className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-4">Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="px-2 space-y-1">
               {items.map((item) => (

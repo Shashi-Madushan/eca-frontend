@@ -50,6 +50,60 @@ export interface ProductDto {
   sku?: string;
 }
 
+export type OrderStatus =
+  | "PENDING"
+  | "CONFIRMED"
+  | "PROCESSING"
+  | "SHIPPED"
+  | "DELIVERED"
+  | "CANCELLED"
+  | "REFUNDED";
+
+export type PaymentMethod =
+  | "CASH"
+  | "CREDIT_CARD"
+  | "DEBIT_CARD"
+  | "MOBILE_PAYMENT"
+  | "BANK_TRANSFER"
+  | "GIFT_CARD";
+
+export interface OrderItemDto {
+  orderItemId?: number;
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  discountAmount?: number;
+}
+
+export interface OrderDto {
+  orderId?: number;
+  orderDate: string;
+  customerId: string;
+  orderStatus: OrderStatus;
+  paymentMethod: PaymentMethod;
+  subtotalAmount: number;
+  taxAmount: number;
+  discountAmount: number;
+  totalAmount: number;
+  receiptUrl?: string;
+  invoiceUrl?: string;
+  orderItems: OrderItemDto[];
+}
+
+export interface CreateOrderPayload {
+  orderDate: string;
+  customerId: string;
+  orderStatus: OrderStatus;
+  paymentMethod: PaymentMethod;
+  subtotalAmount: number;
+  taxAmount: number;
+  discountAmount: number;
+  totalAmount: number;
+  orderItems: OrderItemDto[];
+}
+
 /**
  * Validation constraints matching the API specification
  */

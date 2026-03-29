@@ -27,9 +27,8 @@ async function handleProxy(req: NextRequest, params: { slug?: string[] }) {
     const slugPath = params.slug ? params.slug.join("/") : "";
     const searchParams = req.nextUrl.searchParams.toString();
     const query = searchParams ? `?${searchParams}` : "";
-    
-    // Connects to Gateway: http://localhost:7001/api/v1/products
-    const targetUrl = `${API_GATEWAY}/api/v1/products${slugPath ? `/${slugPath}` : ""}${query}`;
+
+    const targetUrl = `${API_GATEWAY}/api/v1/orders${slugPath ? `/${slugPath}` : ""}${query}`;
 
     const headers = new Headers(req.headers);
     headers.delete("host");
@@ -59,7 +58,6 @@ async function handleProxy(req: NextRequest, params: { slug?: string[] }) {
     });
 
     const responseHeaders = new Headers(res.headers);
-    // Remove headers that might cause Next.js Response serialization issues
     responseHeaders.delete("content-encoding");
 
     const responseBody = await res.text();
@@ -69,7 +67,7 @@ async function handleProxy(req: NextRequest, params: { slug?: string[] }) {
       headers: responseHeaders,
     });
   } catch (error) {
-    console.error("Products Proxy error:", error);
+    console.error("Orders Proxy error:", error);
     return NextResponse.json({ message: "Gateway error" }, { status: 500 });
   }
 }
