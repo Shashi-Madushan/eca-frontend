@@ -7,10 +7,8 @@ import { Minus, Plus, Search, ShoppingCart, Trash2, User, Wallet } from "lucide-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  DashboardPageHeader,
   DashboardPageShell,
   EmptyState,
-  MetricCard,
   SoftBadge,
   SurfacePanel,
   formatEnumLabel,
@@ -454,7 +452,7 @@ export default function PosPage() {
                   </div>
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-2 flex-shrink-0">
                   <div className="rounded-[22px] border border-black/8 bg-black/[0.02] p-4">
                     <div className="flex items-center gap-2 text-black/55">
                       <User className="h-4 w-4" />
@@ -472,13 +470,13 @@ export default function PosPage() {
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
+              <div className="space-y-3 flex-1 flex flex-col min-h-0">
+                <div className="flex items-center justify-between flex-shrink-0">
                   <h3 className="text-lg font-semibold tracking-[-0.03em] text-black">Cart items</h3>
                   <SoftBadge>{cartItems.length} lines</SoftBadge>
                 </div>
 
-                <div className="pos-scrollbar max-h-[360px] space-y-3 overflow-y-auto pr-1">
+                <div className="pos-scrollbar space-y-3 overflow-y-auto pr-1 flex-1">
                   {cartItems.length === 0 ? (
                     <div className="rounded-[24px] border border-dashed border-black/12 bg-black/[0.02] p-5 text-sm text-black/55">
                       Cart is empty. Add products from the left to start checkout.
@@ -526,7 +524,7 @@ export default function PosPage() {
                 </div>
               </div>
 
-              <div className="rounded-[28px] border border-black/8 bg-black/[0.02] p-5">
+              <div className="rounded-[28px] border border-black/8 bg-black/[0.02] p-5 flex-shrink-0">
                 <div className="space-y-3 text-sm">
                   <div className="flex items-center justify-between text-black/62">
                     <span>Subtotal</span>
@@ -547,7 +545,7 @@ export default function PosPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 flex-shrink-0">
                 <Button
                   type="button"
                   variant="outline"
